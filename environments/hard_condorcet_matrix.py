@@ -1,7 +1,6 @@
 """The hard Condorcet environment from the SAVAGE paper."""
 
 import numpy as np
-
 from feedback.matrix_feedback import MatrixFeedback
 from stats.preference_matrix import PreferenceMatrix
 

@@ -1,8 +1,7 @@
 """Common metrics for algorithm performance."""
 
 import time
-from typing import Callable
-from typing import Union
+from typing import Callable, Union
 
 import numpy as np
 

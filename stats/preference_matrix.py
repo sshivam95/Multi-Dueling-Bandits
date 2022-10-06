@@ -1,12 +1,8 @@
 """A preference matrix with associated utility functions."""
 
-from typing import Any
-from typing import List
-from typing import Optional
-from typing import Set
+from typing import Any, List, Optional, Set
 
 import numpy as np
-
 from util.utility_functions import argmax_set
 
 

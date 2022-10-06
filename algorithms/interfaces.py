@@ -1,11 +1,10 @@
 """Standardized interfaces for different kinds of Algorithms."""
 
-from typing import Collection
-from typing import List
-from typing import Optional
+from typing import Collection, List, Optional
+
+from stats.preference_matrix import PreferenceMatrix
 
 from algorithms.algorithm import Algorithm
-from stats.preference_matrix import PreferenceMatrix
 
 
 class PacAlgorithm(Algorithm):
@@ -62,7 +61,7 @@ class PacAlgorithm(Algorithm):
         """
         if self.time_horizon is not None:
             # "Regret-minimizing mode"
-            return self.wrapped_feedback.duels_exhausted()
+            return self.feedback_mechanism.duels_exhausted()
         else:
             # "PAC mode"
             return self.exploration_finished()
@@ -84,7 +83,7 @@ class CondorcetProducer(Algorithm):
         """Run one step of exploitation."""
         winner = self.get_condorcet_winner()
         assert winner is not None
-        self.wrapped_feedback.duel(winner, winner)
+        self.feedback_mechanism.duel(winner, winner)
 
 
 class SingleCopelandProducer(Algorithm):
@@ -103,7 +102,7 @@ class SingleCopelandProducer(Algorithm):
         """Run one step of exploitation."""
         winner = self.get_copeland_winner()
         assert winner is not None
-        self.wrapped_feedback.duel(winner, winner)
+        self.feedback_mechanism.duel(winner, winner)
 
 
 class AllCopelandProducer(Algorithm):
@@ -126,7 +125,7 @@ class AllCopelandProducer(Algorithm):
         # smaller if we picked one at random, but we do not have access to a
         # random state here.
         winner = list(winners)[0]
-        self.wrapped_feedback.duel(winner, winner)
+        self.feedback_mechanism.duel(winner, winner)
 
 
 class CopelandRankingProducer(Algorithm):
@@ -145,7 +144,7 @@ class CopelandRankingProducer(Algorithm):
         """Run one step of exploitation."""
         ranking = self.get_ranking()
         assert ranking is not None
-        self.wrapped_feedback.duel(ranking[0], ranking[0])
+        self.feedback_mechanism.duel(ranking[0], ranking[0])
 
 
 class BordaRankingProducer(Algorithm):
@@ -164,7 +163,7 @@ class BordaRankingProducer(Algorithm):
         """Run one step of exploitation."""
         ranking = self.get_ranking()
         assert ranking is not None
-        self.wrapped_feedback.duel(ranking[0], ranking[0])
+        self.feedback_mechanism.duel(ranking[0], ranking[0])
 
 
 class GeneralizedRankingProducer(Algorithm):
@@ -183,7 +182,7 @@ class GeneralizedRankingProducer(Algorithm):
         """Run one step of exploitation."""
         winner = self.get_ranking()
         assert winner is not None
-        self.wrapped_feedback.duel(winner[0][0], winner[0][0])
+        self.feedback_mechanism.duel(winner[0][0], winner[0][0])
 
 
 class PartialRankingProducer(Algorithm):
@@ -202,7 +201,7 @@ class PartialRankingProducer(Algorithm):
         """Run one step of exploitation."""
         ranking = self.get_partial_ranking()
         assert ranking is not None
-        self.wrapped_feedback.duel(ranking[0], ranking[0])
+        self.feedback_mechanism.duel(ranking[0], ranking[0])
 
 
 class AllApproximateCondorcetProducer(Algorithm):
@@ -224,7 +223,7 @@ class AllApproximateCondorcetProducer(Algorithm):
         # smaller if we picked one at random, but we do not have access to a
         # random state here.
         winner = list(winners)[0]
-        self.wrapped_feedback.duel(winner, winner)
+        self.feedback_mechanism.duel(winner, winner)
 
 
 class BordaProducer(Algorithm):
@@ -243,7 +242,7 @@ class BordaProducer(Algorithm):
         """Run one step of exploitation."""
         borda_winner = self.get_borda_winner()
         assert borda_winner is not None
-        self.wrapped_feedback.duel(borda_winner, borda_winner)
+        self.feedback_mechanism.duel(borda_winner, borda_winner)
 
 
 class PreferenceMatrixProducer(Algorithm):
@@ -278,4 +277,4 @@ class TopKArmsProducer(Algorithm):
         # smaller if we picked one at random, but we do not have access to a
         # random state here.
         winner = list(winners)[0]
-        self.wrapped_feedback.duel(winner, winner)
+        self.feedback_mechanism.duel(winner, winner)

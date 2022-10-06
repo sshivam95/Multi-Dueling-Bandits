@@ -7,29 +7,20 @@ repository to get started.
 import argparse
 import inspect
 import time
-from typing import Dict
-from typing import Generator
-from typing import List
-from typing import Type
+from typing import Dict, Generator, List, Type
 
-from joblib import delayed
-from joblib import Parallel
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-
-from algorithms import Algorithm
-from algorithms import regret_minimizing_algorithms
-from experiments.environments import environment_list
+from algorithms import Algorithm, regret_minimizing_algorithms
 from feedback import MatrixFeedback
-from stats.metrics import AverageRegret
-from stats.metrics import BestArmRate
-from stats.metrics import Cumulative
-from stats.metrics import ExponentialMovingAverage
-from stats.metrics import Metric
-from stats.metrics import TotalWallClock
+from joblib import Parallel, delayed
+from stats.metrics import (AverageRegret, BestArmRate, Cumulative,
+                           ExponentialMovingAverage, Metric, TotalWallClock)
 from util.feedback_decorators import MetricKeepingFeedbackMechanism
+
+from environments import environment_list
 
 
 def run_single_algorithm(

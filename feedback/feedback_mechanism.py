@@ -1,12 +1,19 @@
 """A generic way to compare two arms against each other."""
 from itertools import combinations
 
+from util.exceptions import AlgorithmFinishedException
+
 
 class FeedbackMechanism:
     """Some means of comparing two arms."""
 
     def __init__(self, arms: list) -> None:
         self.arms = arms
+
+        class TimeBudgetExceededException(AlgorithmFinishedException):
+            """Raised if the duel budget would be exceeded by the current duel."""
+
+        self.exception_class = TimeBudgetExceededException
 
     # In our final design we will probably want a better arm representation to
     # avoid restricting it to int.

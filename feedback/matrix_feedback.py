@@ -42,7 +42,6 @@ class MatrixFeedback(FeedbackMechanism):
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
         )
-        # self.pairwise_preference_score = 
 
     def duel(self, arm_i_index: int, arm_j_index: int) -> bool:
         """Perform a duel between two arms based on a given probability matrix.

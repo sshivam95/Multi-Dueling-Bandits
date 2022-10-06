@@ -1,22 +1,11 @@
 """A generic superclass which contains the common functions required in the implemented PB-MAB algorithms."""
 
-from typing import Optional
-from experiments.environments.plackett_luce_model import PlackettLuceModel
+from environments.plackett_luce_model import PlackettLuceModel
 import numpy as np
 
 
 class Algorithm:
     r"""Parent class of all the implemented PB-MAB algorithms.
-
-    Parameters
-    ----------
-    feedback_mechanism
-        An object that describes the environment.
-    time_horizon
-        The number of duels the algorithm should perform. If a time horizon is
-        given, the algorithm should perform exactly as many duels. May be
-        ``None``, in which case the algorithm will execute until an
-        algorithm-specific termination condition is reached.
 
     Attributes
     ----------
@@ -32,12 +21,11 @@ class Algorithm:
         algorithm-specific termination condition is reached.
     """
 
-    def __init__(self, time_horizon: Optional[int]):
+    def __init__(self, skill_vector):
         self.random_state = np.random.RandomState()
         self.feedback_mechanism = PlackettLuceModel(
-            num_arms=30, random_state=self.random_state
+            num_arms=30, random_state=self.random_state, skill_vector=skill_vector
         )
-        self.time_horizon = time_horizon
 
     def step(self) -> None:
         """Run one step of the algorithm.
@@ -70,11 +58,9 @@ class Algorithm:
         This may be based on a time horizon or a different algorithm-specific
         termination criterion if time_horizon is ``None``.
         """
-        if self.time_horizon is None:
-            raise NotImplementedError(
-                "No time horizon set and no custom termination condition implemented."
-            )
-        return self.wrapped_feedback.duels_exhausted()
+        raise NotImplementedError(
+            "No time horizon set and no custom termination condition implemented."
+        )
 
     def run(self) -> None:
         """Run the algorithm until completion.
@@ -85,6 +71,6 @@ class Algorithm:
         while not self.is_finished():
             try:
                 self.step()
-            except self.wrapped_feedback.exception_class:
+            except self.feedback_mechanism.exception_class:
                 # Duel budget exhausted
                 return

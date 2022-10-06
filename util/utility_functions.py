@@ -1,15 +1,12 @@
 """Implementation of various helper functions."""
-import math
-from typing import Callable
-from typing import List
-from typing import Optional
-import csv 
-import re
+import csv
 import os
+import re
 from pathlib import Path
-from sklearn import preprocessing
+from typing import List, Optional
 
 import numpy as np
+from sklearn import preprocessing
 
 
 def argmin_set(
@@ -123,23 +120,32 @@ def pop_random(
         return picked
 
 
-def random_sample_from_list(array, random_state, exclude, size):
-    return random_state.choice(
-        list(set(array) - set(exclude)), size=size - 1, replace=False
-    )
+def random_sample_from_list(array, random_state, size: int, exclude: Optional[int] = None):
+    if exclude is not None:
+        return random_state.choice(
+            list(np.delete(array, exclude)), size=size, replace=False
+        )
+    else:
+        return random_state.choice(
+            list(array), size=size, replace=False
+        )
 
 
 def exclude_elements(array, exclude):
     return np.array(list(set(array) - set(exclude)))
 
+
 def read_run_times():
-    running_times_file = os.path.join(f'{Path.cwd()}', 'Data_saps_swgcp_reduced\cpu_times_inst_param.csv')
+    running_times_file = os.path.join(
+        f"{Path.cwd()}",
+        os.path.join("Data_saps_swgcp_reduced", "cpu_times_inst_param.csv"),
+    )
     running_times = []
-    with open(running_times_file, newline='') as csvfile:
+    with open(running_times_file, newline="") as csvfile:
         running_times_data = list(csv.reader(csvfile))
     for i in range(1, len(running_times_data)):
         next_line = running_times_data[i][0]
-        next_rt_vector = [float(s) for s in re.findall(r'-?\d+\.?\d*', next_line)][2:]
+        next_rt_vector = [float(s) for s in re.findall(r"-?\d+\.?\d*", next_line)][2:]
         running_times.append(next_rt_vector)
     running_times = np.asarray(running_times)
     lambda_ = 100
@@ -147,12 +153,13 @@ def read_run_times():
 
     return running_times
 
+
 def read_parameterization():
     parametrizations_file = "Data_saps_swgsp\\Random_Parameters_SAPS.txt"
     with open(parametrizations_file) as f:
         lineList = f.readlines()
     f.close()
-    parametrizations = [float(s) for s in re.findall(r'-?\d+\.?\d*', lineList[0])]
+    parametrizations = [float(s) for s in re.findall(r"-?\d+\.?\d*", lineList[0])]
     parametrizations = np.reshape(parametrizations, (20, 4))
     parametrizations = preprocessing.normalize(parametrizations)
 
