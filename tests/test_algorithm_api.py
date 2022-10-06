@@ -7,7 +7,7 @@ import pytest
 
 from algorithms import Algorithm
 from algorithms import regret_minimizing_algorithms
-from experiments.environments import HardCondorcetMatrix
+from environments import HardCondorcetMatrix
 
 
 @pytest.mark.parametrize("algorithm_class", list(regret_minimizing_algorithms))
