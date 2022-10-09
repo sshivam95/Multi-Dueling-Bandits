@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
+import pandas as pd
 from sklearn import preprocessing
+from sklearn.feature_selection import VarianceThreshold
+from sklearn.preprocessing import PolynomialFeatures
+
+from util.metrics import average_performance_saps
 
 
 def argmin_set(
@@ -120,22 +125,26 @@ def pop_random(
         return picked
 
 
-def random_sample_from_list(array, random_state, size: int, exclude: Optional[int] = None):
+def random_sample_from_list(
+    array, random_state, size: int, exclude: Optional[int] = None
+):
     if exclude is not None:
+        if not isinstance(exclude, list):
+            exclude = [exclude]
         return random_state.choice(
-            list(np.delete(array, exclude)), size=size, replace=False
+            exclude_elements(array=array, exclude=exclude),
+            size=size,
+            replace=False,
         )
     else:
-        return random_state.choice(
-            list(array), size=size, replace=False
-        )
+        return random_state.choice(list(array), size=size, replace=False)
 
 
 def exclude_elements(array, exclude):
     return np.array(list(set(array) - set(exclude)))
 
 
-def read_run_times():
+def get_run_times_saps():
     running_times_file = os.path.join(
         f"{Path.cwd()}",
         os.path.join("Data_saps_swgcp_reduced", "cpu_times_inst_param.csv"),
@@ -154,13 +163,221 @@ def read_run_times():
     return running_times
 
 
-def read_parameterization():
-    parametrizations_file = "Data_saps_swgsp\\Random_Parameters_SAPS.txt"
-    with open(parametrizations_file) as f:
+def get_parameterization_saps():
+    parametrizations_file = os.path.join(
+        f"{Path.cwd()}",
+        os.path.join("Data_saps_swgcp_reduced", "Random_Parameters_SAPS.txt"),
+    )
+    with open(parametrizations_file, "r") as f:
         lineList = f.readlines()
-    f.close()
     parametrizations = [float(s) for s in re.findall(r"-?\d+\.?\d*", lineList[0])]
     parametrizations = np.reshape(parametrizations, (20, 4))
     parametrizations = preprocessing.normalize(parametrizations)
 
     return parametrizations
+
+
+def get_features_saps():
+    # read features
+    features_file = os.path.join(
+        f"{Path.cwd()}",
+        os.path.join("Data_saps_swgcp_reduced", "Reduced_Features_SWGCP_only_5000.csv"),
+    )
+    features = []
+    problem_instances = []
+    with open(features_file, newline="") as csvfile:
+        features_data = list(csv.reader(csvfile))
+    for i in range(1, len(features_data)):
+        next_line = features_data[i]
+        problem_instances.append(next_line[0])
+        del next_line[0]
+        next_feature_vector = [float(s) for s in next_line]
+        features.append(next_feature_vector)
+    features = np.asarray(features)
+    # normalize#########
+    min_max_scaler = preprocessing.MinMaxScaler()
+    features = min_max_scaler.fit_transform(features)
+    # Drop Highly Correlated Features #######
+    df = pd.DataFrame(features)
+    # Create correlation matrix
+    corr_matrix = df.corr().abs()
+    # Select upper triangle of correlation matrix
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    # Find index of feature columns with correlation greater than 0.95
+    to_drop = [column for column in upper.columns if any(upper[column] > 0.98)]
+    # Drop features
+    df.drop(df[to_drop], axis=1, inplace=True)
+    features = df.to_numpy()
+    # Drop features with lower variance
+    selector = VarianceThreshold(0.001)
+    features = selector.fit_transform(features)
+    return features, problem_instances
+
+
+def get_context_matrix(
+    parametrizations, features, joint_feature_map_mode, context_feature_dimensions
+):
+    n_arms = parametrizations.shape[0]
+    min_max_scaler = preprocessing.MinMaxScaler()
+    context_matrix = []
+    for t in range(features.shape[0]):
+        X = np.zeros((n_arms, context_feature_dimensions))
+        next_context = features[t, :]
+        for i in range(n_arms):
+            # next_param = parametrizations[i]
+            X[i, :] = join_feature_map(
+                x=parametrizations[i], y=next_context, mode=joint_feature_map_mode
+            )
+        X = preprocessing.normalize(X)
+        X = min_max_scaler.fit_transform(X)
+        context_matrix.append(X)
+    context_matrix = np.array(context_matrix)
+    return context_matrix
+
+
+def join_feature_map(
+    x: np.ndarray, y: np.ndarray, mode: Optional[str] = "polynimial"
+) -> np.ndarray:
+    """
+    The feature engineering part of the CPPL algorithm.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        Features of problem instances.
+    y : np.ndarray
+        Features of parameterization.
+    mode : str
+        Mode of the solver.
+
+    Returns
+    -------
+    np.ndarray
+        A numpy array of the transforms joint features based on the mode of the solver.
+    """
+    if mode == "concatenation":
+        return np.concatenate((x, y), axis=0)
+    elif mode == "kronecker":
+        return np.kron(x, y)
+    elif mode == "polynomial":
+        poly = PolynomialFeatures(degree=2, interaction_only=True)
+        return poly.fit_transform(np.concatenate((x, y), axis=0).reshape(1, -1))
+
+
+def get_round_winner(
+    running_time, arm_1: Optional[int] = None, arm_2: Optional[int] = None
+):
+    if arm_1 and arm_2 is None:
+        return np.argmin(running_time)
+    elif arm_1 != arm_2:
+        winner = arm_1 if check_runtime(arm_1, arm_2, running_time) else arm_2
+        return winner
+
+
+def check_runtime(arm_i, arm_j, running_time):
+    if running_time[arm_i] > running_time[arm_j]:
+        return False
+    else:
+        return True
+
+
+def regret_preselection_saps(skill_vector, action_subset):
+    selection_set_size = len(action_subset)
+    # average performance of best set
+    best_item = np.argmax(skill_vector)
+    if best_item in action_subset:
+        return 0
+    else:
+        S_star = (-skill_vector).argsort()[0:selection_set_size]
+        S_star_perf = 0
+        S_perf = 0
+        for i in range(selection_set_size):
+            S_star_perf = S_star_perf + average_performance_saps(
+                S_star[i], skill_vector
+            )
+            S_perf = S_perf + average_performance_saps(action_subset[i], skill_vector)
+        return (S_star_perf - S_perf) / selection_set_size
+
+
+def gradient(
+    theta: np.ndarray,
+    winner_arm: int,
+    subset_arms: np.ndarray,
+    context_matrix: np.ndarray,
+) -> float:
+    """
+    Calculate the gradient of the log-likelihood function in the partial winner feedback scenario.
+
+    Parameters
+    ----------
+    theta : np.ndarray
+        Score or weight parameter of each arm in the contender pool. Theta is use to calculate the log-linear estimated skill parametet v_hat.
+    winner_arm : int
+        Winner arm (parameter) in the subset.
+    subset_arms : np.ndarray
+        A subset of arms from the contender pool for solving the instances.
+    context_matrix : np.ndarray
+        A context matrix where each element is associated with one of the different arms and contains the
+        properties of the arm itself as well as the context in which the arm needs to be chosen.
+
+    Returns
+    -------
+    res: float
+        The gradient of the log-likelihood function in the partial winner feedback scenario.
+    """
+    denominator = 0
+    num = np.zeros((len(theta)))
+    for arm in subset_arms:
+        denominator = denominator + np.exp(np.dot(theta, context_matrix[arm, :]))
+        num = num + (
+            context_matrix[arm, :] * np.exp(np.dot(theta, context_matrix[arm, :]))
+        )
+    res = context_matrix[winner_arm, :] - (num / denominator)
+    return res
+
+
+def hessian(
+    theta: np.ndarray, ranking: np.ndarray, context_matrix: np.ndarray
+) -> np.ndarray:
+    """
+    Calculate the hessian matrix of the log-likelihood function in the partial winner feedback scenario.
+
+    Parameters
+    ----------
+    theta : np.ndarray
+        Score parameter matrix where each row represents each arm in the contender pool. Theta is use to calculate the log-linear estimated skill parametet v_hat.
+    ranking : np.ndarray
+        A subset of arms from the contender pool for solving the instances.
+    context_matrix : np.ndarray
+        A context matrix where each element is associated with one of the different arms and contains
+        the properties of the arm itself as well as the context in which the arm needs to be chosen.
+
+    Returns
+    -------
+    np.ndarray
+        A hessian matrix of the log-likelihood function in the partial winner feedback scenario.
+    """
+    dimension = len(theta)
+    t_1 = np.zeros(dimension)
+    for arm in ranking:
+        t_1 = t_1 + (
+            context_matrix[arm, :] * np.exp(np.dot(theta, context_matrix[arm, :]))
+        )
+    num_1 = np.outer(t_1, t_1)
+    denominator_1 = 0
+    for arm in ranking:
+        denominator_1 = (
+            denominator_1 + np.exp(np.dot(theta, context_matrix[arm, :])) ** 2
+        )
+    s_1 = num_1 / denominator_1
+    num_2 = 0
+    for j in ranking:
+        num_2 = num_2 + (
+            np.exp(np.dot(theta, context_matrix[j, :]))
+            * np.outer(context_matrix[j, :], context_matrix[j, :])
+        )
+    denominator_2 = 0
+    for arm in ranking:
+        denominator_2 = denominator_2 + np.exp(np.dot(theta, context_matrix[arm, :]))
+    s_2 = num_2 / denominator_2
+    return s_1 - s_2

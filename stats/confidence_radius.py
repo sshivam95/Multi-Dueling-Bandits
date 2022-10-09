@@ -4,6 +4,8 @@ from typing import Callable
 
 import numpy as np
 
+from util.utility_functions import gradient
+
 
 class ConfidenceRadius:
     """An abstract superclass for confidence-radius definitions."""

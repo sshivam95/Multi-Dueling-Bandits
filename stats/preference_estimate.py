@@ -1,6 +1,6 @@
 """Utilities for estimating preference matrices based on samples."""
 
-from typing import Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 
@@ -101,11 +101,13 @@ class PreferenceEstimate:
     def __init__(
         self,
         num_arms: int,
-        confidence_radius: ConfidenceRadius = TrivialConfidenceRadius(),
+        confidence_radius: Optional[Union[ConfidenceRadius, np.array]] = None,
     ) -> None:
         self.num_arms = num_arms
-        self.wins = np.zeros((num_arms, num_arms))
+        # self.wins = np.zeros((num_arms, num_arms))
+        self.wins = np.zeros(num_arms)
         self.confidence_radius = confidence_radius
+        self.skill_vector = np.zeros(num_arms)
         self._cached_mean_estimate = np.full((num_arms, num_arms), 0.5)
         self._pairwise_preference_score = np.zeros((num_arms, num_arms))
         self._cached_radius = None
@@ -123,7 +125,7 @@ class PreferenceEstimate:
         self._cached_radius = None
 
     def enter_sample(
-        self, first_arm_index: int, second_arm_index: int, first_won: bool
+        self, winner_arm: int  # , arm_index: int, second_arm_index: int
     ) -> None:
         """Enter the result of a sampled duel.
 
@@ -131,54 +133,71 @@ class PreferenceEstimate:
         ----------
         first_arm_index
             The index of the first arm of the duel.
-        second_arm_index
-            The index of the second arm of the duel.
-        first_won
-            Whether the first arm won the duel.
+        # second_arm_index
+        #     The index of the second arm of the duel.
+        # first_won
+        #     Whether the first arm won the duel.
         """
         # It would be possible to normalize the order instead of duplicating
         # the information. That would restrict us to comparable arm
         # representations though.
-        if first_won:
-            self.wins[first_arm_index][second_arm_index] += 1
-        else:
-            self.wins[second_arm_index][first_arm_index] += 1
+        # if first_won:
+        #     self.wins[first_arm_index][second_arm_index] += 1
+        # else:
+        #     self.wins[second_arm_index][first_arm_index] += 1
 
-        if first_arm_index == second_arm_index:
-            # Nothing to update, the preference is known.
-            return
+        # if first_arm_index == second_arm_index:
+        #     # Nothing to update, the preference is known.
+        #     return
+        self.wins[winner_arm] += 1
 
         # based on wins array, already updated
-        samples = self.get_num_samples(first_arm_index, second_arm_index)
+        # samples = self.get_num_samples(arm_index, second_arm_index)
 
-        self.set_mean_estimate(first_arm_index, second_arm_index, first_won, samples)
-        self.set_pairwise_preference_score(first_arm_index, second_arm_index)
+        # self.set_mean_estimate(arm_index, second_arm_index, first_won, samples)
+        # self.set_pairwise_preference_score(arm_index, second_arm_index)
         self._cached_radius = None
 
-    def set_mean_estimate(self, first_arm_index, second_arm_index, first_won, samples):
-        prev = self._cached_mean_estimate[first_arm_index][second_arm_index]
-        win_indicator = 1 if first_won else 0
-        new_mean = prev + (win_indicator - prev) / samples
+    # def set_mean_estimate(self, first_arm_index, second_arm_index, first_won, samples):
+    #     prev = self._cached_mean_estimate[first_arm_index][second_arm_index]
+    #     win_indicator = 1 if first_won else 0
+    #     new_mean = prev + (win_indicator - prev) / samples
 
-        self._cached_mean_estimate[first_arm_index][second_arm_index] = new_mean
-        self._cached_mean_estimate[second_arm_index][first_arm_index] = 1 - new_mean
+    #     self._cached_mean_estimate[first_arm_index][second_arm_index] = new_mean
+    #     self._cached_mean_estimate[second_arm_index][first_arm_index] = 1 - new_mean
 
-    def set_pairwise_preference_score(self, first_arm_index, second_arm_index):
-        wins_first = self.get_wins(arm_index=first_arm_index)
-        wins_second = self.get_wins(arm_index=second_arm_index)
-        new_preference_score = wins_first / (wins_first + wins_second)
+    def set_pairwise_preference_score(
+        self, first_arm_index, second_arm_index, context_matrix, theta
+    ):
+        for i in range(self.num_arms):
+            self.skill_vector[i] += np.exp(np.inner(context_matrix[i, :], theta.T))
+        new_preference_score = self.skill_vector[first_arm_index] / (
+            self.skill_vector[first_arm_index] + self.skill_vector[second_arm_index]
+        )
+        # wins_first = self.get_wins(arm_index=first_arm_index)
+        # wins_second = self.get_wins(arm_index=second_arm_index)
+        # new_preference_score = wins_first / (wins_first + wins_second)
 
         self._pairwise_preference_score[first_arm_index][
             second_arm_index
         ] = new_preference_score
 
     def get_wins(self, arm_index: int) -> int:
-        wins = 0
-        for i in range(self.num_arms):
-            wins += self.wins[arm_index][i]
-        return wins
+        # wins = 0
+        # for i in range(self.num_arms):
+        #     wins += self.wins[arm_index][i]
+        # return wins
+        return self.wins[arm_index]
+
+    def get_skills(self, arm_index: int) -> float:
+        return self.skill_vector[arm_index]
 
     def get_pairwise_preference_score(self, first_arm_index, second_arm_index):
+        self._pairwise_preference_score[first_arm_index][
+            second_arm_index
+        ] = self.get_wins(first_arm_index) / (
+            self.get_wins(first_arm_index) + self.get_wins(second_arm_index)
+        )
         return self._pairwise_preference_score[first_arm_index][second_arm_index]
 
     def get_mean_estimate(self, first_arm_index: int, second_arm_index: int) -> float:
@@ -265,7 +284,7 @@ class PreferenceEstimate:
         """
         return min(
             self._cached_mean_estimate[first_arm_index][second_arm_index]
-            + self._get_confidence_radius(first_arm_index, second_arm_index),
+            + self.get_confidence_radius(first_arm_index, second_arm_index),
             1,
         )
 

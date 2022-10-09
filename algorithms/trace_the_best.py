@@ -1,3 +1,5 @@
+import enum
+import logging
 import multiprocessing
 from typing import Optional
 
@@ -20,14 +22,17 @@ class TraceTheBest(PacAlgorithm):
 
     def __init__(
         self,
-        skill_vector,
+        rounds: Optional[int] = None,
         subset_size: Optional[int] = multiprocessing.cpu_count(),
         error_bias: float = 0.1,  # epsilon
         failure_probability: float = 0.05,  # delta
+        logger_name="TraceTheBest",
+        logger_level=logging.INFO,
     ):
-        super().__init__(skill_vector=skill_vector)
+        super().__init__()
         self.subset_size = subset_size
-        num_arms = self.feedback_mechanism.get_num_arms()
+        self.logger = logging.getLogger(logger_name)
+        self.logger.setLevel(logger_level)
 
         try:
             assert (
@@ -47,67 +52,98 @@ class TraceTheBest(PacAlgorithm):
 
         self.failure_probability = failure_probability
 
-        def probability_scaling(num_samples: int) -> float:
-            return 4 * (num_arms * num_samples) ** 2
-
-        self.preference_estimate = PreferenceEstimate(
-            num_arms=num_arms,
-            confidence_radius=HoeffdingConfidenceRadius(
-                failure_probability, probability_scaling
-            ),
-        )
+        self.preference_estimate = PreferenceEstimate(num_arms=self.num_arms)
         self.running_winner: int = None  # r_l
-        self.running_winner = self.random_state.choice(
-            self.feedback_mechanism.get_arms(), replace=False
-        )
+        self.running_winner = self.random_state.choice(self.get_arms(), replace=False)
         self.actions = utility_functions.random_sample_from_list(
-            array=self.feedback_mechanism.get_arms(),
+            array=self.get_arms(),
             random_state=self.random_state,
             exclude=self.running_winner,
             size=self.subset_size - 1,
         )  # A
         self.actions = np.append(self.actions, self.running_winner)
         self.subset = utility_functions.exclude_elements(
-            array=self.feedback_mechanism.get_arms(), exclude=self.actions
+            array=self.get_arms(), exclude=self.actions
         )  # S
 
-        self.rounds = None
+        self.rounds = rounds
         self.empirical_winner: int = None  # c_l
+        # self.rounds = int(
+        #     np.divide(2 * self.subset_size, self.error_bias**2)
+        #     * np.log(
+        #         np.divide(
+        #             2 * self.get_num_arms(), self.failure_probability
+        #         )
+        #     )
+        # )
+        if self.rounds > self.time_horizon:
+            self.rounds = self.time_horizon
+        self.regret = list()
+        self.counter = 0
+        self.finished = False
+        instances = [i for i, _ in enumerate(self.problem_instances)]
+        self.round_set = {
+            i: i + (self.rounds - 1) for i in instances if i % self.rounds == 0
+        }
+        self.round_instances = list()
+        for k, v in self.round_set.items():
+            self.round_instances.append(instances[k:v])
 
     def run(self) -> None:
+        self.logger.info("Running algorithm...")
         while not self.is_finished():
             self.step()
+            self.counter = self.counter + 1
 
     def step(self) -> None:
-        self.rounds = np.divide(2 * self.subset_size, self.error_bias**2) * np.log(
-            np.divide(
-                2 * self.feedback_mechanism.get_num_arms(), self.failure_probability
+        self.logger.info(f"Iteration: {self.counter}")
+        self.logger.debug(f"    -> Running winner: {self.running_winner}")
+        self.logger.debug(f"    -> Actions: {self.actions}")
+        self.logger.debug(f"    -> Subset: {self.subset}")
+        self.logger.info("Starting Duels...")
+
+        regret = list()
+        for instance in self.round_instances[self.counter]:
+            # for i in self.actions:
+            winner_round = utility_functions.get_round_winner(
+                self.running_time[instance]
             )
-        )
-        while self.rounds > 0:
+            self.preference_estimate.enter_sample(winner_arm=winner_round)
             for i in self.actions:
                 for j in self.actions:
                     if i != j:
-                        self.preference_estimate.enter_sample(
+                        self.preference_estimate.set_pairwise_preference_score(
                             first_arm_index=i,
                             second_arm_index=j,
-                            first_won=self.feedback_mechanism.duel(i, j),
+                            context_matrix=self.context_matrix[instance],
+                            theta=self.theta_bar,
                         )
-            self.rounds = self.rounds - 1
+
+            regret.append(self.compute_regret(instance=instance))
+        self.regret.append(regret)
+
+        self.logger.info("Duels finished...")
         wins = dict()
         for arm in self.actions:
             wins[arm] = self.preference_estimate.get_wins(arm_index=arm)
         self.empirical_winner = max(wins, key=wins.get)
+        self.logger.debug(f"    -> Empirical winner: {self.empirical_winner}")
 
         if self.preference_estimate.get_pairwise_preference_score(
             first_arm_index=self.empirical_winner, second_arm_index=self.running_winner
         ) > (1 / 2) + (self.error_bias / 2):
+            self.logger.info("p(c_l, r_l) > 1/2 + ∈/2")
             prev_running_winner = self.running_winner
             self.running_winner = self.empirical_winner
+            self.logger.debug(f"    -> New running winner: {self.running_winner}")
         else:
             prev_running_winner = self.running_winner
-
+        if self.subset.size == 0:
+            self.logger.info("End of Iterations...")
+            self.finished = True
+            return
         if self.subset.size < self.subset_size - 1:
+            self.logger.info("self.subset.size < self.subset_size - 1")
             self.actions = utility_functions.random_sample_from_list(
                 array=self.actions,
                 random_state=self.random_state,
@@ -129,12 +165,17 @@ class TraceTheBest(PacAlgorithm):
                 array=self.subset, exclude=self.actions
             )
 
+            # TODO: UPDATE THETA
+
     def is_finished(self) -> bool:
-        if self.subset.size == 0:
-            return True
-        else:
-            return False
+        return self.finished
 
     def get_condorcet_winner(self):
         winner = self.running_winner
         return winner
+
+    def compute_regret(self, instance):
+        regret = utility_functions.regret_preselection_saps(
+            skill_vector=self.running_time[instance], action_subset=self.actions
+        )
+        return regret
