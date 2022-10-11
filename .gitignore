@@ -3,3 +3,11 @@ work
 __pycache__
 .vscode/*
 .idea/*
+Job_Scripts/run_script.sh
+Job_Scripts/script_parameter_setup.sh
+singularity/compile_env.sh
+singularity/pbcppl.def
+singularity/pbcppl.sif
+copy_to_pc2_sshivam.sh
+env_setup_pipenv.sh
+Pipfile
