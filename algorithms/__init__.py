@@ -1,7 +1,8 @@
 """Various algorithms to solve Preference-Based Multi-Armed Bandit Problems."""
 
 from algorithms.algorithm import Algorithm
-
+from algorithms.trace_the_best import TraceTheBest
+from algorithms.upper_confidence_bound import UCB
 
 # Pylint insists that regret_minimizing_algorithms and interfaces are constants and should be
 # named in UPPER_CASE. Technically that is correct, but it doesn't feel quite
@@ -14,7 +15,10 @@ from algorithms.algorithm import Algorithm
 # experiments and tests.
 # All algorithms that include some sort of regret-minimizing mode. That
 # includes PAC algorithms with an (optional) exploitation phase.
-regret_minimizing_algorithms = []
+regret_minimizing_algorithms = [
+    UCB,
+    TraceTheBest,
+]
 other_algorithms = []
 # This is not really needed, but otherwise zimports doesn't understand the
 # __all__ construct and complains that the Algorithm import is unnecessary.

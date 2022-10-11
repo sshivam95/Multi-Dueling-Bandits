@@ -118,8 +118,8 @@ class TraceTheBest(PacAlgorithm):
                             context_matrix=self.context_matrix[instance],
                             theta=self.theta_bar,
                         )
-
-            regret.append(self.compute_regret(instance=instance))
+                self.confidence
+            regret.append(self.compute_regret(time_step=instance, selection=self.actions))
         self.regret.append(regret)
 
         self.logger.info("Duels finished...")
@@ -173,9 +173,3 @@ class TraceTheBest(PacAlgorithm):
     def get_condorcet_winner(self):
         winner = self.running_winner
         return winner
-
-    def compute_regret(self, instance):
-        regret = utility_functions.regret_preselection_saps(
-            skill_vector=self.running_time[instance], action_subset=self.actions
-        )
-        return regret

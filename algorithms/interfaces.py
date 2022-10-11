@@ -131,7 +131,7 @@ class AllCopelandProducer(Algorithm):
 class CopelandRankingProducer(Algorithm):
     """An Algorithm that computes or estimates the Copeland ranking over the arms."""
 
-    def get_ranking(self) -> Optional[List[int]]:
+    def get_selection(self) -> Optional[List[int]]:
         """Return the computed Copeland ranking if it is ready.
 
         This will only return a result when ``step`` has been called a
@@ -142,7 +142,7 @@ class CopelandRankingProducer(Algorithm):
 
     def exploit(self) -> None:
         """Run one step of exploitation."""
-        ranking = self.get_ranking()
+        ranking = self.get_selection()
         assert ranking is not None
         self.feedback_mechanism.duel(ranking[0], ranking[0])
 
@@ -150,7 +150,7 @@ class CopelandRankingProducer(Algorithm):
 class BordaRankingProducer(Algorithm):
     """An Algorithm that computes or estimates the Borda ranking over the arms."""
 
-    def get_ranking(self) -> Optional[List[int]]:
+    def get_selection(self) -> Optional[List[int]]:
         """Return the computed Borda ranking if it is ready.
 
         This will only return a result when ``step`` has been called a
@@ -161,7 +161,7 @@ class BordaRankingProducer(Algorithm):
 
     def exploit(self) -> None:
         """Run one step of exploitation."""
-        ranking = self.get_ranking()
+        ranking = self.get_selection()
         assert ranking is not None
         self.feedback_mechanism.duel(ranking[0], ranking[0])
 
@@ -169,7 +169,7 @@ class BordaRankingProducer(Algorithm):
 class GeneralizedRankingProducer(Algorithm):
     """An algorithm that produce the ranking of disjoint sets of arms in the user desired way."""
 
-    def get_ranking(self) -> Optional[List[List[int]]]:
+    def get_selection(self) -> Optional[List[List[int]]]:
         """Return the computed ranking if it is ready.
 
         This will only return a result when ``step`` has been called a
@@ -180,7 +180,7 @@ class GeneralizedRankingProducer(Algorithm):
 
     def exploit(self) -> None:
         """Run one step of exploitation."""
-        winner = self.get_ranking()
+        winner = self.get_selection()
         assert winner is not None
         self.feedback_mechanism.duel(winner[0][0], winner[0][0])
 
