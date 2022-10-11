@@ -11,8 +11,6 @@ from sklearn import preprocessing
 from sklearn.feature_selection import VarianceThreshold
 from sklearn.preprocessing import PolynomialFeatures
 
-from util.metrics import average_performance_saps
-
 
 def argmin_set(
     array: np.array, exclude_indexes: Optional[List[int]] = None
@@ -157,9 +155,8 @@ def get_run_times_saps():
         next_rt_vector = [float(s) for s in re.findall(r"-?\d+\.?\d*", next_line)][2:]
         running_times.append(next_rt_vector)
     running_times = np.asarray(running_times)
-    lambda_ = 100
+    lambda_ = 10
     running_times = np.exp(-lambda_ * running_times)
-
     return running_times
 
 
@@ -184,34 +181,86 @@ def get_features_saps():
         os.path.join("Data_saps_swgcp_reduced", "Reduced_Features_SWGCP_only_5000.csv"),
     )
     features = []
-    problem_instances = []
+    # problem_instances = []
     with open(features_file, newline="") as csvfile:
         features_data = list(csv.reader(csvfile))
     for i in range(1, len(features_data)):
         next_line = features_data[i]
-        problem_instances.append(next_line[0])
+        # problem_instances.append(next_line[0])
         del next_line[0]
         next_feature_vector = [float(s) for s in next_line]
         features.append(next_feature_vector)
     features = np.asarray(features)
-    # normalize#########
-    min_max_scaler = preprocessing.MinMaxScaler()
-    features = min_max_scaler.fit_transform(features)
-    # Drop Highly Correlated Features #######
-    df = pd.DataFrame(features)
-    # Create correlation matrix
-    corr_matrix = df.corr().abs()
-    # Select upper triangle of correlation matrix
-    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
-    # Find index of feature columns with correlation greater than 0.95
-    to_drop = [column for column in upper.columns if any(upper[column] > 0.98)]
-    # Drop features
-    df.drop(df[to_drop], axis=1, inplace=True)
-    features = df.to_numpy()
-    # Drop features with lower variance
-    selector = VarianceThreshold(0.001)
-    features = selector.fit_transform(features)
-    return features, problem_instances
+    features = preprocess(
+        data=features, variance_threshold=0.001, correlation_threshold=0.98
+    )
+    return features
+
+
+def get_run_times_mips():
+    running_times_file = os.path.join(
+        f"{Path.cwd()}",
+        os.path.join("bids_arbitrary_data", "20_Params_times.csv"),
+    )
+    running_times = []
+    with open(running_times_file, newline="") as csvfile:
+        running_times_data = list(csv.reader(csvfile))
+    for i in range(1, len(running_times_data)):
+        next_line = running_times_data[i][0]
+        next_rt_vector = [float(s) for s in re.findall(r"-?\d+\.?\d*", next_line)][2:]
+        running_times.append(next_rt_vector)
+    running_times = np.asarray(running_times)
+    lambda_ = 10
+    running_times = np.exp(-lambda_ * running_times)
+    return running_times
+
+
+def get_parameterization_mips():
+    parametrizations_file = os.path.join(
+        f"{Path.cwd()}",
+        os.path.join("bids_arbitrary_data", "20_params_bids_arb.csv"),
+    )
+    parametrizations = []
+    with open(parametrizations_file, newline="") as csvfile:
+        parametrizations_data = list(csv.reader(csvfile))
+    for i in range(1, len(parametrizations_data)):
+        next_line = parametrizations_data[i]
+        next_parameter_vector = [
+            float(s) for s in re.findall(r"-?\d+\.?\d*", next_line[0])
+        ]
+        del next_parameter_vector[0]
+        parametrizations.append(next_parameter_vector)
+    parametrizations = [e for e in parametrizations if len(e) == 115]
+    parametrizations = np.asarray(parametrizations)
+    parametrizations = preprocess(
+        data=parametrizations, variance_threshold=0.15, correlation_threshold=0.95
+    )
+    return parametrizations
+
+
+def get_features_mips():
+    # read features
+    features_file = os.path.join(
+        f"{Path.cwd()}",
+        os.path.join(
+            "bids_arbitrary_data", "Features_1500_inst_sort_bids_arbitrary_MIP_CA.csv"
+        ),
+    )
+    features = []
+    with open(features_file, newline="") as csvfile:
+        features_data = list(csv.reader(csvfile))
+    for i in range(1, len(features_data)):
+        next_line = features_data[i]
+        next_feature_vector = [
+            float(s) for s in re.findall(r"-?\d+\.?\d*", next_line[0])
+        ]
+        features.append(next_feature_vector)
+    features = np.asarray(features)
+    features = features[:, 2:]
+    features = preprocess(
+        data=features, variance_threshold=0.01, correlation_threshold=0.9
+    )
+    return features
 
 
 def get_context_matrix(
@@ -268,42 +317,24 @@ def get_round_winner(
     running_time, arm_1: Optional[int] = None, arm_2: Optional[int] = None
 ):
     if arm_1 and arm_2 is None:
-        return np.argmin(running_time)
+        return np.argmax(running_time)
     elif arm_1 != arm_2:
         winner = arm_1 if check_runtime(arm_1, arm_2, running_time) else arm_2
         return winner
 
 
 def check_runtime(arm_i, arm_j, running_time):
-    if running_time[arm_i] > running_time[arm_j]:
+    if running_time[arm_i] < running_time[arm_j]:
         return False
     else:
         return True
 
 
-def regret_preselection_saps(skill_vector, action_subset):
-    selection_set_size = len(action_subset)
-    # average performance of best set
-    best_item = np.argmax(skill_vector)
-    if best_item in action_subset:
-        return 0
-    else:
-        S_star = (-skill_vector).argsort()[0:selection_set_size]
-        S_star_perf = 0
-        S_perf = 0
-        for i in range(selection_set_size):
-            S_star_perf = S_star_perf + average_performance_saps(
-                S_star[i], skill_vector
-            )
-            S_perf = S_perf + average_performance_saps(action_subset[i], skill_vector)
-        return (S_star_perf - S_perf) / selection_set_size
-
-
 def gradient(
     theta: np.ndarray,
     winner_arm: int,
-    subset_arms: np.ndarray,
-    context_matrix: np.ndarray,
+    selection: np.ndarray,
+    context_vector: np.ndarray,
 ) -> float:
     """
     Calculate the gradient of the log-likelihood function in the partial winner feedback scenario.
@@ -314,7 +345,7 @@ def gradient(
         Score or weight parameter of each arm in the contender pool. Theta is use to calculate the log-linear estimated skill parametet v_hat.
     winner_arm : int
         Winner arm (parameter) in the subset.
-    subset_arms : np.ndarray
+    subset : np.ndarray
         A subset of arms from the contender pool for solving the instances.
     context_matrix : np.ndarray
         A context matrix where each element is associated with one of the different arms and contains the
@@ -327,17 +358,19 @@ def gradient(
     """
     denominator = 0
     num = np.zeros((len(theta)))
-    for arm in subset_arms:
-        denominator = denominator + np.exp(np.dot(theta, context_matrix[arm, :]))
+    for arm in selection:
+        denominator = denominator + np.exp(np.dot(theta, context_vector[arm, :]))
         num = num + (
-            context_matrix[arm, :] * np.exp(np.dot(theta, context_matrix[arm, :]))
+            context_vector[arm, :] * np.exp(np.dot(theta, context_vector[arm, :]))
         )
-    res = context_matrix[winner_arm, :] - (num / denominator)
-    return res
+    res = context_vector[winner_arm, :] - (num / denominator)
+    return res.reshape(
+        -1,
+    )
 
 
 def hessian(
-    theta: np.ndarray, ranking: np.ndarray, context_matrix: np.ndarray
+    theta: np.ndarray, selection: np.ndarray, context_matrix: np.ndarray
 ) -> np.ndarray:
     """
     Calculate the hessian matrix of the log-likelihood function in the partial winner feedback scenario.
@@ -346,7 +379,7 @@ def hessian(
     ----------
     theta : np.ndarray
         Score parameter matrix where each row represents each arm in the contender pool. Theta is use to calculate the log-linear estimated skill parametet v_hat.
-    ranking : np.ndarray
+    subset : np.ndarray
         A subset of arms from the contender pool for solving the instances.
     context_matrix : np.ndarray
         A context matrix where each element is associated with one of the different arms and contains
@@ -359,25 +392,62 @@ def hessian(
     """
     dimension = len(theta)
     t_1 = np.zeros(dimension)
-    for arm in ranking:
+    for arm in selection:
         t_1 = t_1 + (
             context_matrix[arm, :] * np.exp(np.dot(theta, context_matrix[arm, :]))
         )
     num_1 = np.outer(t_1, t_1)
     denominator_1 = 0
-    for arm in ranking:
+    for arm in selection:
         denominator_1 = (
             denominator_1 + np.exp(np.dot(theta, context_matrix[arm, :])) ** 2
         )
     s_1 = num_1 / denominator_1
     num_2 = 0
-    for j in ranking:
+    for j in selection:
         num_2 = num_2 + (
             np.exp(np.dot(theta, context_matrix[j, :]))
             * np.outer(context_matrix[j, :], context_matrix[j, :])
         )
     denominator_2 = 0
-    for arm in ranking:
+    for arm in selection:
         denominator_2 = denominator_2 + np.exp(np.dot(theta, context_matrix[arm, :]))
     s_2 = num_2 / denominator_2
     return s_1 - s_2
+
+
+def stochastic_gradient_descent(theta, gamma_t, selection, context_vector, winner):
+    derivative = gradient(
+        theta=theta,
+        winner_arm=winner,
+        selection=selection,
+        context_vector=context_vector,
+    )
+    theta += gamma_t * derivative
+    theta[theta < 0] = 0
+    theta[theta > 1] = 1
+    return theta
+
+
+def preprocess(data, variance_threshold, correlation_threshold):
+    # normalize#########
+    min_max_scaler = preprocessing.MinMaxScaler()
+    data = min_max_scaler.fit_transform(data)
+    # Drop Highly Correlated Features #######
+    df = pd.DataFrame(data)
+    # Create correlation matrix
+    corr_matrix = df.corr().abs()
+    # Select upper triangle of correlation matrix
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+    # Find index of feature columns with correlation greater than 0.95
+    to_drop = [
+        column for column in upper.columns if any(upper[column] > correlation_threshold)
+    ]
+    # Drop features
+    df.drop(df[to_drop], axis=1, inplace=True)
+    data = df.to_numpy()
+    # Drop features with lower variance
+    selector = VarianceThreshold(variance_threshold)
+    data = selector.fit_transform(data)
+    ########
+    return data

@@ -1,5 +1,6 @@
 """Constants used in the project."""
 from enum import Enum
+from feedback import feedback_list
 
 
 class Solver(Enum):
