@@ -125,7 +125,7 @@ class PreferenceEstimate:
         self._cached_radius = None
 
     def enter_sample(
-        self, winner_arm: int  # , arm_index: int, second_arm_index: int
+        self, winner_arm: Union[int, np.array]  # , arm_index: int, second_arm_index: int
     ) -> None:
         """Enter the result of a sampled duel.
 
