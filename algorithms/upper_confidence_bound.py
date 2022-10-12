@@ -17,6 +17,9 @@ class UCB(Algorithm):
         solver: Optional[str] = Solver.SAPS.value,
         omega: Optional[float] = None,
         subset_size: Optional[int] = multiprocessing.cpu_count(),
+        parametrizations: Optional[np.array] = None,
+        features: Optional[np.array] = None,
+        running_time: Optional[np.array] = None,
         logger_name="UpperConfidenceBound",
         logger_level=logging.INFO,
     ) -> None:
@@ -25,13 +28,14 @@ class UCB(Algorithm):
             joint_featured_map_mode=joint_featured_map_mode,
             solver=solver,
             omega=omega,
+            parametrizations=parametrizations,
+            features=features,
+            running_time=running_time,
             subset_size=subset_size,
             logger_level=logger_level,
         )
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
-        self.logger.info("Initializing")
-
         self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
 
     def step(self):
@@ -68,7 +72,6 @@ class UCB(Algorithm):
 
         self.logger.debug(f"    -> Selection Winner: {self.winner}")
         self.preference_estimate.enter_sample(winner_arm=self.winner)
-        self.logger.debug("Updating Theta...")
         self.update_theta(
             selection=self.selection, time_step=self.time_step, winner=self.winner
         )
