@@ -42,7 +42,7 @@ class UCB(Algorithm):
         self.logger.debug(f"    -> Time Step: {self.time_step}")
         context_vector = self.context_matrix[self.time_step - 1]
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
-            context_vector=context_vector
+            theta=self.theta_bar, context_vector=context_vector
         )
         self.logger.debug(
             f"    -> Skill Vector: {self.skill_vector[self.time_step - 1]}"
@@ -72,7 +72,8 @@ class UCB(Algorithm):
 
         self.logger.debug(f"    -> Selection Winner: {self.winner}")
         self.preference_estimate.enter_sample(winner_arm=self.winner)
-        self.update_theta(
+        self.update_estimated_theta(
             selection=self.selection, time_step=self.time_step, winner=self.winner
         )
+        self.update_mean_theta(self.time_step)
         self.compute_regret(selection=self.selection, time_step=self.time_step)
