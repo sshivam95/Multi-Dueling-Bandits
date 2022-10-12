@@ -146,13 +146,13 @@ class Algorithm:
         print("Execution time: ", self.execution_time)
         self.logger.info("Algorithm Finished...")
 
-    def get_skill_vector(self, context_vector):
+    def get_skill_vector(self, theta, context_vector):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
             self.feedback_mechanism.get_num_arms()
         )  # Line 5 in CPPL algorithm
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            skill_vector[arm] = np.exp(np.inner(self.theta_bar, context_vector[arm, :]))
+            skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
     def get_confidence_bounds(
@@ -354,7 +354,7 @@ class Algorithm:
         """
         return (-quality_of_arms).argsort()[0 : self.subset_size]
 
-    def update_theta(self, selection, time_step, winner):
+    def update_estimated_theta(self, selection, time_step, winner, gamma_t: Optional[float] = None):
         """_summary_
 
         Parameters
@@ -371,7 +371,10 @@ class Algorithm:
         #     winner = winner
         context_vector = self.context_matrix[time_step - 1]
         # update step size
-        gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
+        if gamma_t is None:
+            gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
+        else:
+            gamma_t = gamma_t
         # update theta_hat with SGD
         self.theta_hat = utility_functions.stochastic_gradient_descent(
             theta=self.theta_hat,
@@ -380,18 +383,40 @@ class Algorithm:
             context_vector=context_vector,
             winner=winner,
         )
+
+    def update_mean_theta(self, time_step):
+        """_summary_
+
+        Parameters
+        ----------
+        time_step : _type_
+            _description_
+        """
         # update theta_bar
         self.theta_bar = (
             time_step - 1
         ) * self.theta_bar / time_step + self.theta_hat / time_step
 
     def get_regret(self):
+        """_summary_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
         return self.regret
 
     def compute_regret(self, selection, time_step):
+        """_summary_
+
+        Parameters
+        ----------
+        selection : _type_
+            _description_
+        time_step : _type_
+            _description_
+        """
         self.regret[time_step - 1] = metrics.regret_preselection_saps(
             skill_vector=self.running_time[time_step - 1], selection=selection
         )
-        # self.regret_preselection[time_step - 1] = metrics.regret_preselection(
-        #     theta=
-        # )
