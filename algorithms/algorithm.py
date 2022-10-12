@@ -3,11 +3,13 @@
 import copy
 import logging
 import multiprocessing
+from time import perf_counter
 from typing import Optional
 
 import numpy as np
 import scipy as sp
 from feedback.feedback_mechanism import FeedbackMechanism
+from stats.preference_estimate import PreferenceEstimate
 from util import metrics, utility_functions
 from util.constants import JointFeatureMode, Solver
 from util.exceptions import AlgorithmFinishedException
@@ -45,7 +47,7 @@ class Algorithm:
             self.running_time = utility_functions.get_run_times_mips()
         self.num_arms = self.parametrizations.shape[0]
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
-        
+
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")
 
@@ -75,7 +77,9 @@ class Algorithm:
         self.theta_init = self.random_state.rand(
             self.context_dimensions
         )  # Initialize randomly
-        self.theta_hat = copy.copy(self.theta_init)  # maximum-likelihood estimate of the weight parameter
+        self.theta_hat = copy.copy(
+            self.theta_init
+        )  # maximum-likelihood estimate of the weight parameter
         self.theta_bar = copy.copy(self.theta_hat)
         self.regret = np.zeros(self.time_horizon)
         self.regret_preselection = np.zeros(self.time_horizon)
@@ -89,6 +93,13 @@ class Algorithm:
         self.alpha = 0.2
         self.grad_op_sum = np.zeros((self.context_dimensions, self.context_dimensions))
         self.hessian_sum = np.zeros((self.context_dimensions, self.context_dimensions))
+        self.preference_estimate = PreferenceEstimate(num_arms=self.num_arms)
+        self.time_step = 0
+        self.selection = self.random_state.choice(
+            self.num_arms, self.subset_size, replace=False
+        )  # start with random selection
+        self.winner = None
+        self.execution_time = 0
 
     def step(self) -> None:
         """Run one step of the algorithm.
@@ -115,28 +126,17 @@ class Algorithm:
         """
         raise NotImplementedError
 
-    def is_finished(self) -> bool:
-        """Determine if the algorithm is finished.
+    def run(self):
+        self.logger.info("Running algorithm...")
+        start_time = perf_counter()
 
-        This may be based on a time horizon or a different algorithm-specific
-        termination criterion if time_horizon is ``None``.
-        """
-        raise NotImplementedError(
-            "No time horizon set and no custom termination condition implemented."
-        )
+        for self.time_step in range(1, self.time_horizon + 1):
+            self.step()
 
-    def run(self) -> None:
-        """Run the algorithm until completion.
-
-        Completion is determined through the ``is_finished`` function. Refer to
-        its documentation for more details.
-        """
-        while not self.is_finished():
-            try:
-                self.step()
-            except AlgorithmFinishedException:
-                # Duel budget exhausted
-                return
+        end_time = perf_counter()
+        self.execution_time = end_time - start_time
+        print("Execution time: ", self.execution_time)
+        self.logger.info("Algorithm Finished...")
 
     def get_skill_vector(self, context_vector):
         # compute estimated contextualized utility parameters
@@ -144,12 +144,12 @@ class Algorithm:
             self.feedback_mechanism.get_num_arms()
         )  # Line 5 in CPPL algorithm
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            skill_vector[arm] = np.exp(
-                np.inner(self.theta_bar, context_vector[arm, :])
-            )
+            skill_vector[arm] = np.exp(np.inner(self.theta_bar, context_vector[arm, :]))
         return skill_vector
 
-    def get_confidence_bounds(self, selection, time_step, context_vector, winner: Optional[int] = None):
+    def get_confidence_bounds(
+        self, selection, time_step, context_vector, winner: Optional[int] = None
+    ):
         """_summary_
 
         Parameters
