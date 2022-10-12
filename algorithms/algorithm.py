@@ -23,29 +23,37 @@ class Algorithm:
         solver: Optional[str] = Solver.SAPS.value,
         omega: Optional[float] = None,
         subset_size: Optional[int] = multiprocessing.cpu_count(),
+        parametrizations: Optional[np.array] = None,
+        features: Optional[np.array] = None,
+        running_time: Optional[np.array] = None,
         logger_name="BaseAlgorithm",
         logger_level=logging.INFO,
     ) -> None:
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
-        self.logger.info("Initializing")
         self.subset_size = subset_size
         self.logger.debug(f"    -> Subset size: {self.subset_size}")
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
         )
         self.feedback_mechanism: FeedbackMechanism = None
-        if solver == Solver.SAPS.value:
-            self.parametrizations = utility_functions.get_parameterization_saps()
-            self.features = utility_functions.get_features_saps()
-            self.running_time = utility_functions.get_run_times_saps()
-        elif solver == Solver.MIPS.value:
-            self.parametrizations = utility_functions.get_parameterization_mips()
-            self.features = utility_functions.get_features_mips()
-            self.running_time = utility_functions.get_run_times_mips()
+
+        if features is None  and parametrizations is None  and running_time is None:
+            if solver == Solver.SAPS.value:
+                self.parametrizations = utility_functions.get_parameterization_saps()
+                self.features = utility_functions.get_features_saps()
+                self.running_time = utility_functions.get_run_times_saps()
+            elif solver == Solver.MIPS.value:
+                self.parametrizations = utility_functions.get_parameterization_mips()
+                self.features = utility_functions.get_features_mips()
+                self.running_time = utility_functions.get_run_times_mips()
+        else:
+            self.parametrizations = parametrizations
+            self.features = features
+            self.running_time = running_time
+
         self.num_arms = self.parametrizations.shape[0]
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
-        
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")
 
@@ -75,18 +83,20 @@ class Algorithm:
         self.theta_init = self.random_state.rand(
             self.context_dimensions
         )  # Initialize randomly
-        self.theta_hat = copy.copy(self.theta_init)  # maximum-likelihood estimate of the weight parameter
+        self.theta_hat = copy.copy(
+            self.theta_init
+        )  # maximum-likelihood estimate of the weight parameter
         self.theta_bar = copy.copy(self.theta_hat)
         self.regret = np.zeros(self.time_horizon)
         self.regret_preselection = np.zeros(self.time_horizon)
         if not omega:
             self.omega = (
-                np.sqrt(self.context_dimensions * np.log(self.time_horizon)) / 100
+                1  # np.sqrt(self.context_dimensions * np.log(self.time_horizon)) / 100
             )
         self.skill_vector = np.zeros((self.time_horizon, self.num_arms))
         self.confidence = np.zeros((self.time_horizon, self.num_arms))
-        self.gamma = 0.5
-        self.alpha = 0.2
+        self.gamma = 2
+        self.alpha = 0.6
         self.grad_op_sum = np.zeros((self.context_dimensions, self.context_dimensions))
         self.hessian_sum = np.zeros((self.context_dimensions, self.context_dimensions))
 
@@ -144,12 +154,12 @@ class Algorithm:
             self.feedback_mechanism.get_num_arms()
         )  # Line 5 in CPPL algorithm
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            skill_vector[arm] = np.exp(
-                np.inner(self.theta_bar, context_vector[arm, :])
-            )
+            skill_vector[arm] = np.exp(np.inner(self.theta_bar, context_vector[arm, :]))
         return skill_vector
 
-    def get_confidence_bounds(self, selection, time_step, context_vector, winner: Optional[int] = None):
+    def get_confidence_bounds(
+        self, selection, time_step, context_vector, winner: Optional[int] = None
+    ):
         """_summary_
 
         Parameters
@@ -166,11 +176,11 @@ class Algorithm:
         """
         if time_step > 1:
             if winner is not None:
-                if winner.shape[0] > 1:
-                    # If there are multiple winners from a duel, select anyone at random
-                    winner = self.random_state.choice(winner, size=1, replace=False)
-                else:
-                    winner = winner
+                # if winner.shape[0] > 1:
+                #     # If there are multiple winners from a duel, select anyone at random
+                #     winner = self.random_state.choice(winner, size=1, replace=False)
+                # else:
+                #     winner = winner
                 V_hat = self.compute_V_hat(
                     selection=selection,
                     time_step=time_step,
@@ -189,9 +199,9 @@ class Algorithm:
 
                 sigma_hat = self.compute_sigma_hat(time_step, V_hat, S_hat)
 
-                M = self.compute_M_theta_bar(context_vector)
+                gram_matrix = self.compute_gram_matrix_theta_bar(context_vector)
 
-                I_hat = self.compute_I_hat(sigma_hat, M)
+                I_hat = self.compute_I_hat(sigma_hat, gram_matrix)
                 I_hat_sqrt = np.sqrt(I_hat)
 
                 # compute c_t = confidence bound
@@ -286,7 +296,7 @@ class Algorithm:
         sigma_hat = np.nan_to_num(sigma_hat)
         return sigma_hat
 
-    def compute_M_theta_bar(self, context_vector):
+    def compute_gram_matrix_theta_bar(self, context_vector):
         """_summary_
 
         Parameters
@@ -299,22 +309,22 @@ class Algorithm:
         _type_
             _description_
         """
-        # compute M of theta_bar
-        M = np.zeros((self.num_arms, self.context_dimensions, self.context_dimensions))
+        # compute gram_matrix of theta_bar
+        gram_matrix = np.zeros((self.num_arms, self.context_dimensions, self.context_dimensions))
         for i in range(self.num_arms):
-            M[i] = np.exp(2 * np.dot(context_vector[i], self.theta_bar)) * np.outer(
+            gram_matrix[i] = np.exp(2 * np.dot(context_vector[i], self.theta_bar)) * np.outer(
                 context_vector[i], context_vector[i]
             )
-        return M
+        return gram_matrix
 
-    def compute_I_hat(self, sigma_hat, M):
+    def compute_I_hat(self, sigma_hat, gram_matrix):
         """_summary_
 
         Parameters
         ----------
         sigma_hat : _type_
             _description_
-        M : _type_
+        gram_matrix : _type_
             _description_
 
         Returns
@@ -327,7 +337,7 @@ class Algorithm:
         I_hat = np.array(
             [
                 np.linalg.norm(
-                    np.dot(np.dot(sigma_hat_sqrt, M[i]), sigma_hat_sqrt), ord=2
+                    np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt), ord=2
                 )
                 for i in range(self.n_arms)
             ]
@@ -356,11 +366,11 @@ class Algorithm:
         time_step : _type_
             _description_
         """
-        if winner.shape[0] > 1:
-            # If there are multiple winners from a duel, select anyone at random
-            winner = self.random_state.choice(winner, size=1, replace=False)
-        else:
-            winner = winner
+        # if winner.shape[0] > 1:
+        #     # If there are multiple winners from a duel, select anyone at random
+        #     winner = self.random_state.choice(winner, size=1, replace=False)
+        # else:
+        #     winner = winner
         context_vector = self.context_matrix[time_step - 1]
         # update step size
         gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
