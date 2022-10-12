@@ -40,7 +40,7 @@ class Algorithm:
         )
         self.feedback_mechanism: FeedbackMechanism = None
 
-        if features is None  and parametrizations is None  and running_time is None:
+        if features is None and parametrizations is None and running_time is None:
             if solver == Solver.SAPS.value:
                 self.parametrizations = utility_functions.get_parameterization_saps()
                 self.features = utility_functions.get_features_saps()
@@ -308,11 +308,13 @@ class Algorithm:
             _description_
         """
         # compute gram_matrix of theta_bar
-        gram_matrix = np.zeros((self.num_arms, self.context_dimensions, self.context_dimensions))
+        gram_matrix = np.zeros(
+            (self.num_arms, self.context_dimensions, self.context_dimensions)
+        )
         for i in range(self.num_arms):
-            gram_matrix[i] = np.exp(2 * np.dot(context_vector[i], self.theta_bar)) * np.outer(
-                context_vector[i], context_vector[i]
-            )
+            gram_matrix[i] = np.exp(
+                2 * np.dot(context_vector[i], self.theta_bar)
+            ) * np.outer(context_vector[i], context_vector[i])
         return gram_matrix
 
     def compute_I_hat(self, sigma_hat, gram_matrix):
@@ -335,7 +337,8 @@ class Algorithm:
         I_hat = np.array(
             [
                 np.linalg.norm(
-                    np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt), ord=2
+                    np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt),
+                    ord=2,
                 )
                 for i in range(self.n_arms)
             ]
@@ -354,7 +357,9 @@ class Algorithm:
         """
         return (-quality_of_arms).argsort()[0 : self.subset_size]
 
-    def update_estimated_theta(self, selection, time_step, winner, gamma_t: Optional[float] = None):
+    def update_estimated_theta(
+        self, selection, time_step, winner, gamma_t: Optional[float] = None
+    ):
         """_summary_
 
         Parameters

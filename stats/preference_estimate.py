@@ -101,7 +101,9 @@ class PreferenceEstimate:
     def __init__(
         self,
         num_arms: int,
-        confidence_radius: Optional[Union[ConfidenceRadius, np.array]] = TrivialConfidenceRadius(),
+        confidence_radius: Optional[
+            Union[ConfidenceRadius, np.array]
+        ] = TrivialConfidenceRadius(),
     ) -> None:
         self.num_arms = num_arms
         self.wins_duel = np.zeros((num_arms, num_arms))
@@ -157,10 +159,8 @@ class PreferenceEstimate:
         self.set_pairwise_preference_score(first_arm_index, second_arm_index)
         self._cached_radius = None
 
-    def enter_sample(
-        self, winner_arm: Union[int, np.array]
-    ) -> None:
-        
+    def enter_sample(self, winner_arm: Union[int, np.array]) -> None:
+
         self.wins[winner_arm] += 1
 
     def set_mean_estimate(self, first_arm_index, second_arm_index, first_won, samples):

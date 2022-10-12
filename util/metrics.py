@@ -20,6 +20,7 @@ def regret_preselection_saps(skill_vector, selection):
             )
         return (S_star_perf - S_perf) / selection_set_size
 
+
 def average_performance_saps(arm_in_selection, skill_vector):
     result = 0
     v_i = skill_vector[arm_in_selection]
@@ -31,11 +32,13 @@ def average_performance_saps(arm_in_selection, skill_vector):
     result = result / (n - 1)
     return result
 
+
 def cumulative_regret(regret):
     cumulative_regret = [0]
     for t, regret_t in enumerate(regret):
         cumulative_regret.append((cumulative_regret[t] + regret_t) / t)
     return cumulative_regret[1:]
+
 
 def compute_cumm_reg(regrets):
     cummulative_regrets = []
@@ -45,6 +48,7 @@ def compute_cumm_reg(regrets):
             cummulative_regret.append((cummulative_regret[-1] + value))
         cummulative_regrets.append(cummulative_regret)
     return cummulative_regrets[1:]
+
 
 def regret_preselection(theta, context_vector, selection):
     context_vector = np.array(context_vector)
@@ -58,4 +62,6 @@ def regret_preselection(theta, context_vector, selection):
     if best_arm in selection:
         return 0
     else:
-        return (skill_vector[best_arm] - np.max(skill_vector[selection])) / skill_vector[best_arm]
+        return (
+            skill_vector[best_arm] - np.max(skill_vector[selection])
+        ) / skill_vector[best_arm]

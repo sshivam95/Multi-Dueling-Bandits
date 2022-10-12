@@ -12,4 +12,3 @@ class MultiDuelFeedback(FeedbackMechanism):
         true_skills = running_time[selection]
         winners = np.argmax(true_skills)
         return winners
-        
