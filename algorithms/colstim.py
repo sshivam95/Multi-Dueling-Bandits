@@ -3,11 +3,11 @@ import multiprocessing
 from typing import Optional
 
 import numpy as np
+from feedback.multi_duel_feedback import MultiDuelFeedback
+from util import utility_functions
+from util.constants import JointFeatureMode, Solver
 
 from algorithms.algorithm import Algorithm
-from feedback.multi_duel_feedback import MultiDuelFeedback
-from stats.preference_estimate import PreferenceEstimate
-from util.constants import Solver, JointFeatureMode
 
 
 class Colstim(Algorithm):
@@ -34,8 +34,6 @@ class Colstim(Algorithm):
         self.logger.setLevel(logger_level)
 
         self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
-        self.preference_estimate = PreferenceEstimate(num_arms=self.num_arms)
-        
         if exploration_length is not None:
             try:
                 assert (
@@ -46,7 +44,6 @@ class Colstim(Algorithm):
             self.exploration_length = exploration_length
         else:
             self.exploration_length = self.context_dimensions * self.num_arms
-
         if threshold_parameter is not None:
             try:
                 assert (
@@ -59,7 +56,6 @@ class Colstim(Algorithm):
             self.threshold_parameter = np.sqrt(
                 self.context_dimensions * np.log(self.time_horizon)
             )
-
         if confidence_width is not None:
             try:
                 assert (
@@ -71,4 +67,58 @@ class Colstim(Algorithm):
         else:
             self.confidence_width = np.sqrt(
                 self.context_dimensions * np.log(self.time_horizon)
+            )
+        self.perturbation_variable = np.zeros(self.num_arms)
+        self.trimmed_sampled_perturbation_variable = np.zeros(self.num_arms)
+        self.learning_rate = 0.5
+
+    def step(self):
+        self.logger.debug(f"    -> Time Step: {self.time_step}")
+        context_vector = self.context_matrix[self.time_step - 1]
+        if self.time_step > 1:
+            self.update_estimated_theta(
+                selection=self.selection,
+                time_step=self.time_step,
+                winner=self.winner,
+                gamma_t=self.learning_rate,
+            )
+            self.update_mean_theta(self.time_step)
+        self.sample_perturbation_variable()
+        self.skill_vector[self.time_step - 1] = self.get_skill_vector(
+            context_vector=context_vector
+        )
+        self.confidence[self.time_step - 1] = self.get_confidence_bounds(
+            selection=self.selection,
+            time_step=self.time_step,
+            context_vector=context_vector,
+            winner=self.winner,
+        )
+        self.update_trimmed_perturbation_variable()
+        quality_of_arms = (
+            self.skill_vector[self.time_step - 1]
+            + self.trimmed_sampled_perturbation_variable
+            * self.confidence[self.time_step - 1]
+        )
+        self.selection = self.get_selection(quality_of_arms=quality_of_arms)
+        self.logger.debug(f"    -> Selection: {self.selection}")
+
+        self.logger.debug("Starting Duels...")
+        self.winner = self.feedback_mechanism.multi_duel(
+            selection=self.selection, running_time=self.running_time[self.time_step - 1]
+        )
+        self.logger.debug("Duels finished...")
+        self.logger.debug(f"    -> Selection Winner: {self.winner}")
+        self.preference_estimate.enter_sample(winner_arm=self.winner)
+        self.logger.debug("Updating Theta...")
+        self.compute_regret(selection=self.selection, time_step=self.time_step)
+
+    def sample_perturbation_variable(self):
+        for arm in self.feedback_mechanism.get_arms():
+            self.perturbation_variable[arm] = self.random_state.gumbel()
+
+    def update_trimmed_perturbation_variable(self):
+        for arm in self.feedback_mechanism.get_arms():
+            self.trimmed_sampled_perturbation_variable[arm] = np.min(
+                self.threshold_parameter,
+                np.max(-(self.threshold_parameter), self.perturbation_variable[arm]),
             )
