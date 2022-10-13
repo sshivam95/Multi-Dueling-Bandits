@@ -33,6 +33,8 @@ class Algorithm:
     ) -> None:
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
+        
+        self.logger.info("Initializing...")
         self.subset_size = subset_size
         self.logger.debug(f"    -> Subset size: {self.subset_size}")
         self.random_state = (
@@ -194,11 +196,8 @@ class Algorithm:
                 )
             try:
                 S_hat = self.compute_S_hat(selection, time_step, context_vector)
-
                 sigma_hat = self.compute_sigma_hat(time_step, V_hat, S_hat)
-
                 gram_matrix = self.compute_gram_matrix_theta_bar(context_vector)
-
                 I_hat = self.compute_I_hat(sigma_hat, gram_matrix)
                 I_hat_sqrt = np.sqrt(I_hat)
 
