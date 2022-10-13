@@ -16,6 +16,9 @@ class Colstim(Algorithm):
         random_state: Optional[np.random.RandomState] = None,
         joint_featured_map_mode: Optional[str] = JointFeatureMode.POLYNOMIAL.value,
         solver: Optional[str] = Solver.SAPS.value,
+        parametrizations: Optional[np.array] = None,
+        features: Optional[np.array] = None,
+        running_time: Optional[np.array] = None,
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
@@ -27,9 +30,13 @@ class Colstim(Algorithm):
             random_state=random_state,
             joint_featured_map_mode=joint_featured_map_mode,
             solver=solver,
+            parametrizations=parametrizations,
+            features=features,
+            running_time=running_time,
             subset_size=subset_size,
             logger_level=logger_level,
         )
+        self.logger.info("Initializing...")
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
 
@@ -85,6 +92,7 @@ class Colstim(Algorithm):
             self.update_mean_theta(self.time_step)
         self.sample_perturbation_variable()
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
+            theta=self.theta_hat,
             context_vector=context_vector
         )
         self.confidence[self.time_step - 1] = self.get_confidence_bounds(
@@ -118,7 +126,7 @@ class Colstim(Algorithm):
 
     def update_trimmed_perturbation_variable(self):
         for arm in self.feedback_mechanism.get_arms():
-            self.trimmed_sampled_perturbation_variable[arm] = np.min(
+            self.trimmed_sampled_perturbation_variable[arm] = min(
                 self.threshold_parameter,
-                np.max(-(self.threshold_parameter), self.perturbation_variable[arm]),
+                max(-(self.threshold_parameter), self.perturbation_variable[arm]),
             )
