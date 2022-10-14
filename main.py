@@ -167,6 +167,9 @@ def single_experiment(
     print("Saving files")
     np.save(f"regret_{algorithm_name}_{solver}_{subset_size}", regret)
     np.save(f"execution_time_{algorithm_name}_{solver}_{subset_size}", execution_time)
+    
+    np.savetxt(f"regret_{algorithm_name}_{solver}_{subset_size}.txt", regret)
+    np.savetxt(f"execution_time_{algorithm_name}_{solver}_{subset_size}.txt", execution_time)
 
 
 if __name__ == "__main__":
