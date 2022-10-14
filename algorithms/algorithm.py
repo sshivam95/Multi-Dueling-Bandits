@@ -3,11 +3,13 @@
 import copy
 import logging
 import multiprocessing
+from time import perf_counter
 from typing import Optional
 
 import numpy as np
 import scipy as sp
 from feedback.feedback_mechanism import FeedbackMechanism
+from stats.preference_estimate import PreferenceEstimate
 from util import metrics, utility_functions
 from util.constants import JointFeatureMode, Solver
 from util.exceptions import AlgorithmFinishedException
@@ -31,6 +33,8 @@ class Algorithm:
     ) -> None:
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
+        
+        self.logger.info("Initializing...")
         self.subset_size = subset_size
         self.logger.debug(f"    -> Subset size: {self.subset_size}")
         self.random_state = (
@@ -38,7 +42,7 @@ class Algorithm:
         )
         self.feedback_mechanism: FeedbackMechanism = None
 
-        if features is None  and parametrizations is None  and running_time is None:
+        if features is None and parametrizations is None and running_time is None:
             if solver == Solver.SAPS.value:
                 self.parametrizations = utility_functions.get_parameterization_saps()
                 self.features = utility_functions.get_features_saps()
@@ -99,6 +103,13 @@ class Algorithm:
         self.alpha = 0.6
         self.grad_op_sum = np.zeros((self.context_dimensions, self.context_dimensions))
         self.hessian_sum = np.zeros((self.context_dimensions, self.context_dimensions))
+        self.preference_estimate = PreferenceEstimate(num_arms=self.num_arms)
+        self.time_step = 0
+        self.selection = self.random_state.choice(
+            self.num_arms, self.subset_size, replace=False
+        )  # start with random selection
+        self.winner = None
+        self.execution_time = 0
 
     def step(self) -> None:
         """Run one step of the algorithm.
@@ -125,36 +136,25 @@ class Algorithm:
         """
         raise NotImplementedError
 
-    def is_finished(self) -> bool:
-        """Determine if the algorithm is finished.
+    def run(self):
+        self.logger.info("Running algorithm...")
+        start_time = perf_counter()
 
-        This may be based on a time horizon or a different algorithm-specific
-        termination criterion if time_horizon is ``None``.
-        """
-        raise NotImplementedError(
-            "No time horizon set and no custom termination condition implemented."
-        )
+        for self.time_step in range(1, self.time_horizon + 1):
+            self.step()
 
-    def run(self) -> None:
-        """Run the algorithm until completion.
+        end_time = perf_counter()
+        self.execution_time = end_time - start_time
+        print("Execution time: ", self.execution_time)
+        self.logger.info("Algorithm Finished...")
 
-        Completion is determined through the ``is_finished`` function. Refer to
-        its documentation for more details.
-        """
-        while not self.is_finished():
-            try:
-                self.step()
-            except AlgorithmFinishedException:
-                # Duel budget exhausted
-                return
-
-    def get_skill_vector(self, context_vector):
+    def get_skill_vector(self, theta, context_vector):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
             self.feedback_mechanism.get_num_arms()
         )  # Line 5 in CPPL algorithm
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            skill_vector[arm] = np.exp(np.inner(self.theta_bar, context_vector[arm, :]))
+            skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
     def get_confidence_bounds(
@@ -196,11 +196,8 @@ class Algorithm:
                 )
             try:
                 S_hat = self.compute_S_hat(selection, time_step, context_vector)
-
                 sigma_hat = self.compute_sigma_hat(time_step, V_hat, S_hat)
-
                 gram_matrix = self.compute_gram_matrix_theta_bar(context_vector)
-
                 I_hat = self.compute_I_hat(sigma_hat, gram_matrix)
                 I_hat_sqrt = np.sqrt(I_hat)
 
@@ -310,11 +307,13 @@ class Algorithm:
             _description_
         """
         # compute gram_matrix of theta_bar
-        gram_matrix = np.zeros((self.num_arms, self.context_dimensions, self.context_dimensions))
+        gram_matrix = np.zeros(
+            (self.num_arms, self.context_dimensions, self.context_dimensions)
+        )
         for i in range(self.num_arms):
-            gram_matrix[i] = np.exp(2 * np.dot(context_vector[i], self.theta_bar)) * np.outer(
-                context_vector[i], context_vector[i]
-            )
+            gram_matrix[i] = np.exp(
+                2 * np.dot(context_vector[i], self.theta_bar)
+            ) * np.outer(context_vector[i], context_vector[i])
         return gram_matrix
 
     def compute_I_hat(self, sigma_hat, gram_matrix):
@@ -337,7 +336,8 @@ class Algorithm:
         I_hat = np.array(
             [
                 np.linalg.norm(
-                    np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt), ord=2
+                    np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt),
+                    ord=2,
                 )
                 for i in range(self.n_arms)
             ]
@@ -356,7 +356,9 @@ class Algorithm:
         """
         return (-quality_of_arms).argsort()[0 : self.subset_size]
 
-    def update_theta(self, selection, time_step, winner):
+    def update_estimated_theta(
+        self, selection, time_step, winner, gamma_t: Optional[float] = None
+    ):
         """_summary_
 
         Parameters
@@ -373,7 +375,10 @@ class Algorithm:
         #     winner = winner
         context_vector = self.context_matrix[time_step - 1]
         # update step size
-        gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
+        if gamma_t is None:
+            gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
+        else:
+            gamma_t = gamma_t
         # update theta_hat with SGD
         self.theta_hat = utility_functions.stochastic_gradient_descent(
             theta=self.theta_hat,
@@ -382,18 +387,40 @@ class Algorithm:
             context_vector=context_vector,
             winner=winner,
         )
+
+    def update_mean_theta(self, time_step):
+        """_summary_
+
+        Parameters
+        ----------
+        time_step : _type_
+            _description_
+        """
         # update theta_bar
         self.theta_bar = (
             time_step - 1
         ) * self.theta_bar / time_step + self.theta_hat / time_step
 
     def get_regret(self):
+        """_summary_
+
+        Returns
+        -------
+        _type_
+            _description_
+        """
         return self.regret
 
     def compute_regret(self, selection, time_step):
+        """_summary_
+
+        Parameters
+        ----------
+        selection : _type_
+            _description_
+        time_step : _type_
+            _description_
+        """
         self.regret[time_step - 1] = metrics.regret_preselection_saps(
             skill_vector=self.running_time[time_step - 1], selection=selection
         )
-        # self.regret_preselection[time_step - 1] = metrics.regret_preselection(
-        #     theta=
-        # )

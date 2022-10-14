@@ -13,4 +13,4 @@ class DuelingFeedback(FeedbackMechanism):
         if skills_i > skills_j:
             return True
         else:
-            return False     
+            return False

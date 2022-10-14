@@ -101,10 +101,12 @@ class PreferenceEstimate:
     def __init__(
         self,
         num_arms: int,
-        confidence_radius: Optional[Union[ConfidenceRadius, np.array]] = None,
+        confidence_radius: Optional[
+            Union[ConfidenceRadius, np.array]
+        ] = TrivialConfidenceRadius(),
     ) -> None:
         self.num_arms = num_arms
-        # self.wins = np.zeros((num_arms, num_arms))
+        self.wins_duel = np.zeros((num_arms, num_arms))
         self.wins = np.zeros(num_arms)
         self.confidence_radius = confidence_radius
         self.skill_vector = np.zeros(num_arms)
@@ -125,7 +127,7 @@ class PreferenceEstimate:
         self._cached_radius = None
 
     def enter_sample(
-        self, winner_arm: Union[int, np.array]  # , arm_index: int, second_arm_index: int
+        self, first_arm_index: int, second_arm_index: int, first_won: bool
     ) -> None:
         """Enter the result of a sampled duel.
 
@@ -141,30 +143,33 @@ class PreferenceEstimate:
         # It would be possible to normalize the order instead of duplicating
         # the information. That would restrict us to comparable arm
         # representations though.
-        # if first_won:
-        #     self.wins[first_arm_index][second_arm_index] += 1
-        # else:
-        #     self.wins[second_arm_index][first_arm_index] += 1
+        if first_won:
+            self.wins_duel[first_arm_index][second_arm_index] += 1
+        else:
+            self.wins_duel[second_arm_index][first_arm_index] += 1
 
-        # if first_arm_index == second_arm_index:
-        #     # Nothing to update, the preference is known.
-        #     return
-        self.wins[winner_arm] += 1
+        if first_arm_index == second_arm_index:
+            # Nothing to update, the preference is known.
+            return
 
         # based on wins array, already updated
-        # samples = self.get_num_samples(arm_index, second_arm_index)
+        samples = self.get_num_samples(first_arm_index, second_arm_index)
 
-        # self.set_mean_estimate(arm_index, second_arm_index, first_won, samples)
-        # self.set_pairwise_preference_score(arm_index, second_arm_index)
+        self.set_mean_estimate(first_arm_index, second_arm_index, first_won, samples)
+        self.set_pairwise_preference_score(first_arm_index, second_arm_index)
         self._cached_radius = None
 
-    # def set_mean_estimate(self, first_arm_index, second_arm_index, first_won, samples):
-    #     prev = self._cached_mean_estimate[first_arm_index][second_arm_index]
-    #     win_indicator = 1 if first_won else 0
-    #     new_mean = prev + (win_indicator - prev) / samples
+    def enter_sample(self, winner_arm: Union[int, np.array]) -> None:
 
-    #     self._cached_mean_estimate[first_arm_index][second_arm_index] = new_mean
-    #     self._cached_mean_estimate[second_arm_index][first_arm_index] = 1 - new_mean
+        self.wins[winner_arm] += 1
+
+    def set_mean_estimate(self, first_arm_index, second_arm_index, first_won, samples):
+        prev = self._cached_mean_estimate[first_arm_index][second_arm_index]
+        win_indicator = 1 if first_won else 0
+        new_mean = prev + (win_indicator - prev) / samples
+
+        self._cached_mean_estimate[first_arm_index][second_arm_index] = new_mean
+        self._cached_mean_estimate[second_arm_index][first_arm_index] = 1 - new_mean
 
     def set_pairwise_preference_score(
         self, first_arm_index, second_arm_index, context_matrix, theta
@@ -188,6 +193,12 @@ class PreferenceEstimate:
         #     wins += self.wins[arm_index][i]
         # return wins
         return self.wins[arm_index]
+
+    def get_duel_wins(self, arm_index: int) -> int:
+        wins = 0
+        for i in range(self.num_arms):
+            wins += self.wins[arm_index][i]
+        return wins
 
     def get_skills(self, arm_index: int) -> float:
         return self.skill_vector[arm_index]

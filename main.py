@@ -3,7 +3,7 @@ import sys
 
 import numpy as np
 
-from algorithms import UCB
+from algorithms import Colstim
 from util import utility_functions
 
 logging.basicConfig(
@@ -12,26 +12,28 @@ logging.basicConfig(
 
 
 def _main():
-    repitition_num = 1
+    repitition_num = 50
     parametrizations = utility_functions.get_parameterization_saps()
     features = utility_functions.get_features_saps()
     running_time = utility_functions.get_run_times_saps()
-    regret_ucb = np.zeros((repitition_num, features.shape[0]))
-    execution_time_ucb = np.zeros(repitition_num)
 
     for rep in range(repitition_num):
         print(f"Rep no.: {rep + 1}")
-        ucb = UCB(
+        regret_colstim = np.zeros((repitition_num, features.shape[0]))
+        execution_time_colstim = np.zeros(repitition_num)
+        colstim = Colstim(
             random_state=np.random.RandomState(515),
             parametrizations=parametrizations,
             features=features,
             running_time=running_time,
-            logger_level=logging.DEBUG,
+            # logger_level=logging.DEBUG,
         )
-        ucb.run()
-        regret_ucb[rep] = ucb.get_regret()
-        execution_time_ucb[rep] = ucb.execution_time
-    pass
+        colstim.run()
+        regret_colstim[rep] = colstim.get_regret()
+        execution_time_colstim[rep] = colstim.execution_time
+
+    np.savetxt("regret_colstim_saps.txt", regret_colstim)
+    np.savetxt("execution_time_colstim_saps.txt", execution_time_colstim)
 
 
 if __name__ == "__main__":
