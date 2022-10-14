@@ -28,10 +28,10 @@ class UCB(Algorithm):
             joint_featured_map_mode=joint_featured_map_mode,
             solver=solver,
             omega=omega,
+            subset_size=subset_size,
             parametrizations=parametrizations,
             features=features,
             running_time=running_time,
-            subset_size=subset_size,
             logger_level=logger_level,
         )
         self.logger = logging.getLogger(logger_name)

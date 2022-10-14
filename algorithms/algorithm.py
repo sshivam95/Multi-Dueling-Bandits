@@ -33,7 +33,7 @@ class Algorithm:
     ) -> None:
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
-        
+
         self.logger.info("Initializing...")
         self.subset_size = subset_size
         self.logger.debug(f"    -> Subset size: {self.subset_size}")
@@ -145,7 +145,6 @@ class Algorithm:
 
         end_time = perf_counter()
         self.execution_time = end_time - start_time
-        print("Execution time: ", self.execution_time)
         self.logger.info("Algorithm Finished...")
 
     def get_skill_vector(self, theta, context_vector):

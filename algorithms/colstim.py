@@ -19,10 +19,10 @@ class Colstim(Algorithm):
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
         running_time: Optional[np.array] = None,
+        subset_size: Optional[int] = multiprocessing.cpu_count(),
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
-        subset_size: Optional[int] = multiprocessing.cpu_count(),
         logger_name="COLSTIM",
         logger_level=logging.INFO,
     ) -> None:
