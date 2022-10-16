@@ -7,6 +7,9 @@ from typing import Generator
 
 import numpy as np
 from joblib import Parallel, delayed
+import contextlib
+import joblib
+from tqdm import tqdm
 
 from algorithms import regret_minimizing_algorithms
 from util import utility_functions
@@ -20,7 +23,7 @@ logging.basicConfig(
 def _main():
 
     parser = argparse.ArgumentParser(
-        description="Run Multi-Dueling Bandits experiments and plot results."
+        description="Run Multi-Dueling Bandits experiments."
     )
     algorithm_names_to_algorithms = {
         algorithm.__name__: algorithm for algorithm in regret_minimizing_algorithms
@@ -128,9 +131,26 @@ def run_experiment(
                         parameters,
                         reps,
                     )
+                    
+    @contextlib.contextmanager
+    def tqdm_joblib(tqdm_object):
+        """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+        class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+            def __call__(self, *args, **kwargs):
+                tqdm_object.update(n=self.batch_size)
+                return super().__call__(*args, **kwargs)
+
+        old_batch_callback = joblib.parallel.BatchCompletionCallBack
+        joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+        try:
+            yield tqdm_object
+        finally:
+            joblib.parallel.BatchCompletionCallBack = old_batch_callback
+            tqdm_object.close()
 
     jobs = list(job_producer())
-    Parallel(n_jobs=n_jobs, verbose=50)(jobs)
+    with tqdm_joblib(tqdm(desc="Run Multi-Dueling Bandits experiments", total=len(jobs))) as progress_bar:
+        Parallel(n_jobs=n_jobs, verbose=50)(jobs)
     runtime = perf_counter() - start_time
     print(f"Experiments took {round(runtime)}s.")
 
