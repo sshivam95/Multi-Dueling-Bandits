@@ -36,9 +36,9 @@ class Colstim(Algorithm):
             subset_size=subset_size,
             logger_level=logger_level,
         )
-        self.logger.info("Initializing...")
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
+        self.logger.info("Initializing...")
 
         self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
         if exploration_length is not None:
@@ -80,7 +80,6 @@ class Colstim(Algorithm):
         self.learning_rate = 0.5
 
     def step(self):
-        self.logger.debug(f"    -> Time Step: {self.time_step}")
         context_vector = self.context_matrix[self.time_step - 1]
         if self.time_step > 1:
             self.update_estimated_theta(

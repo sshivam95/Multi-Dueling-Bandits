@@ -2,7 +2,6 @@ import argparse
 import inspect
 import logging
 import sys
-import warnings
 from time import perf_counter
 from typing import Generator
 
@@ -12,8 +11,6 @@ from joblib import Parallel, delayed
 from algorithms import regret_minimizing_algorithms
 from util import utility_functions
 from util.constants import JointFeatureMode, Solver
-
-warnings.filterwarnings("ignore")
 
 logging.basicConfig(
     stream=sys.stdout, format="%(asctime)s | %(name)s (%(levelname)s):\t %(message)s"
@@ -115,7 +112,7 @@ def run_experiment(
                 running_time = utility_functions.get_run_times_mips()
             for algorithm_class in algorithms:
                 algorithm_name = algorithm_class.__name__
-                for subset_size in [5, 6, 7, 8, 9, 10]:
+                for subset_size in [5, 6, 7, 8, 9, 10, 16]:
                     parameters = {
                         "joint_featured_map_mode": joint_featured_map_mode,
                         "solver": solver.value,
@@ -165,11 +162,14 @@ def single_experiment(
         execution_time[rep_id] = algorithm_object.execution_time
     print(f"{algorithm_name} with {solver} and {subset_size} finished...")
     print("Saving files")
-    np.save(f"regret_{algorithm_name}_{solver}_{subset_size}", regret)
-    np.save(f"execution_time_{algorithm_name}_{solver}_{subset_size}", execution_time)
-    
-    np.savetxt(f"regret_{algorithm_name}_{solver}_{subset_size}.txt", regret)
-    np.savetxt(f"execution_time_{algorithm_name}_{solver}_{subset_size}.txt", execution_time)
+    np.save(f"Regret_results//regret_{algorithm_name}_{solver}_{subset_size}", regret)
+    np.save(
+        f"Execution_times_results//execution_time_{algorithm_name}_{solver}_{subset_size}",
+        execution_time,
+    )
+
+    # np.savetxt(f"Regret_results//regret_{algorithm_name}_{solver}_{subset_size}.txt", regret)
+    # np.savetxt(f"Execution_times_results//execution_time_{algorithm_name}_{solver}_{subset_size}.txt", execution_time)
 
 
 if __name__ == "__main__":
