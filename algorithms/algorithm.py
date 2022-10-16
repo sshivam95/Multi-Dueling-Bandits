@@ -10,7 +10,6 @@ import numpy as np
 import scipy as sp
 from feedback.feedback_mechanism import FeedbackMechanism
 from stats.preference_estimate import PreferenceEstimate
-from tqdm import tqdm
 from util import metrics, utility_functions
 from util.constants import JointFeatureMode, Solver
 
@@ -145,7 +144,7 @@ class Algorithm:
         self.logger.info("Running algorithm...")
         start_time = perf_counter()
 
-        for self.time_step in tqdm(range(1, self.time_horizon + 1)):
+        for self.time_step in range(1, self.time_horizon + 1):
             self.step()
 
         end_time = perf_counter()

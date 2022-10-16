@@ -167,7 +167,7 @@ def single_experiment(
     regret = np.zeros((reps, parameters["features"].shape[0]))
     execution_time = np.zeros(reps)
     print(f"{algorithm_name} with {solver} and {subset_size} started...")
-    for rep_id in range(reps):
+    for rep_id in tqdm(range(reps), desc=f"{algorithm_name}_{solver}_{subset_size}"):
         random_state = np.random.RandomState(
             (base_random_seed + hash(algorithm_name) + rep_id) % 2**32
         )
