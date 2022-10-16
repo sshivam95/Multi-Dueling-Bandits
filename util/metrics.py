@@ -28,7 +28,10 @@ def average_performance_saps(arm_in_selection, skill_vector):
     for j in range(n):
         if j != arm_in_selection:
             v_j = skill_vector[j]
-            result = result + (v_i / (v_i + v_j))
+            if v_i == 0 and v_j == 0:
+                result = result
+            else:
+                result = result + (v_i / (v_i + v_j))
     result = result / (n - 1)
     return result
 
