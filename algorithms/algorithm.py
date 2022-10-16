@@ -10,9 +10,9 @@ import numpy as np
 import scipy as sp
 from feedback.feedback_mechanism import FeedbackMechanism
 from stats.preference_estimate import PreferenceEstimate
+from tqdm import tqdm
 from util import metrics, utility_functions
 from util.constants import JointFeatureMode, Solver
-from util.exceptions import AlgorithmFinishedException
 
 
 class Algorithm:
@@ -35,8 +35,6 @@ class Algorithm:
         self.logger.setLevel(logger_level)
 
         self.logger.info("Initializing...")
-        self.subset_size = subset_size
-        self.logger.debug(f"    -> Subset size: {self.subset_size}")
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
         )
@@ -60,6 +58,14 @@ class Algorithm:
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")
+        try:
+            assert (
+                self.num_arms > subset_size
+            ), f"Subset size must be less than than number of arms :{self.num_arms}, given {subset_size}"
+        except AssertionError:
+            raise
+        self.subset_size = subset_size
+        self.logger.debug(f"    -> Subset size: {self.subset_size}")
 
         if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
             self.context_dimensions = (
@@ -76,7 +82,6 @@ class Algorithm:
             ):
                 self.context_dimensions = self.context_dimensions + 3 + index
 
-        self.logger.debug(f"    -> Context dimensions: {self.context_dimensions}")
         self.context_matrix = utility_functions.get_context_matrix(
             parametrizations=self.parametrizations,
             features=self.features,
@@ -140,7 +145,7 @@ class Algorithm:
         self.logger.info("Running algorithm...")
         start_time = perf_counter()
 
-        for self.time_step in range(1, self.time_horizon + 1):
+        for self.time_step in tqdm(range(1, self.time_horizon + 1)):
             self.step()
 
         end_time = perf_counter()
@@ -193,27 +198,23 @@ class Algorithm:
                     context_vector=context_vector,
                     winner=selection[0],
                 )
-            try:
-                S_hat = self.compute_S_hat(selection, time_step, context_vector)
-                sigma_hat = self.compute_sigma_hat(time_step, V_hat, S_hat)
-                gram_matrix = self.compute_gram_matrix_theta_bar(context_vector)
-                I_hat = self.compute_I_hat(sigma_hat, gram_matrix)
-                I_hat_sqrt = np.sqrt(I_hat)
+            S_hat = self.compute_S_hat(selection, time_step, context_vector)
+            sigma_hat = self.compute_sigma_hat(time_step, V_hat, S_hat)
+            gram_matrix = self.compute_gram_matrix_theta_bar(context_vector)
+            I_hat = self.compute_I_hat(sigma_hat, gram_matrix)
+            I_hat_sqrt = np.sqrt(I_hat)
 
-                # compute c_t = confidence bound
-                c_t = (
-                    self.omega
-                    * np.sqrt(
-                        2 * np.log(time_step)
-                        + self.context_dimensions
-                        + 2 * np.sqrt(self.context_dimensions * np.log(time_step))
-                    )
-                    * I_hat_sqrt
+            # compute c_t = confidence bound
+            c_t = (
+                self.omega
+                * np.sqrt(
+                    2 * np.log(time_step)
+                    + self.context_dimensions
+                    + 2 * np.sqrt(self.context_dimensions * np.log(time_step))
                 )
-            except:
-                return 0
-            else:
-                return c_t
+                * I_hat_sqrt
+            )
+            return c_t
         else:
             return 0
 
@@ -287,7 +288,10 @@ class Algorithm:
             _description_
         """
         # compute sigma_hat
-        S_hat_inv = np.linalg.inv(S_hat).astype("float64")
+        try:
+            S_hat_inv = np.linalg.inv(S_hat).astype("float64")
+        except np.linalg.LinAlgError as error:
+            S_hat_inv = np.linalg.pinv(S_hat).astype("float64")
         sigma_hat = (1 / time_step) * np.dot(np.dot(S_hat_inv, V_hat), S_hat_inv)
         sigma_hat = np.nan_to_num(sigma_hat)
         return sigma_hat
@@ -338,7 +342,7 @@ class Algorithm:
                     np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt),
                     ord=2,
                 )
-                for i in range(self.n_arms)
+                for i in range(self.num_arms)
             ]
         )
         return I_hat
