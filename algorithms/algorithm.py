@@ -88,7 +88,7 @@ class Algorithm:
             context_feature_dimensions=self.context_dimensions,
         )
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
-        self.theta_init = self.random_state.rand(
+        self.theta_init = np.zeros(
             self.context_dimensions
         )  # Initialize randomly
         self.theta_hat = copy.copy(

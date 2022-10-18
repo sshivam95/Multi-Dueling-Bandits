@@ -108,6 +108,7 @@ class PreferenceEstimate:
         self.num_arms = num_arms
         self.wins_duel = np.zeros((num_arms, num_arms))
         self.wins = np.zeros(num_arms)
+        self.losses = np.zeros(num_arms)
         self.confidence_radius = confidence_radius
         self.skill_vector = np.zeros(num_arms)
         self._cached_mean_estimate = np.full((num_arms, num_arms), 0.5)
