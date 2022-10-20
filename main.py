@@ -29,6 +29,7 @@ def _main():
         algorithm.__name__: algorithm for algorithm in regret_minimizing_algorithms
     }
     algorithm_choices_string = " ".join(algorithm_names_to_algorithms.keys())
+    solver_list = {solver.value: solver.name for solver in Solver}
     parser.add_argument(
         "-a, --algorithms",
         nargs="+",
@@ -41,7 +42,7 @@ def _main():
     parser.add_argument(
         "--reps",
         dest="reps",
-        default=50,
+        default=10,
         type=int,
         help="How often to run each algorithm. Results will be averaged. (default: 50)",
     )
@@ -55,9 +56,9 @@ def _main():
     parser.add_argument(
         "--dataset",
         dest="solver",
-        default=Solver.SAPS.value,
+        default=solver_list,
         type=str,
-        help="Which dataset of problem instances to use for experimentation. (default: saps)",
+        help=f"Which dataset of problem instances to use for experimentation. (default: {solver_list})",
     )
     parser.add_argument(
         "-jfm, --joint-feature-mode",
@@ -85,12 +86,19 @@ def _main():
     algorithms = [
         algorithm_names_to_algorithms[algorithm] for algorithm in args.algorithms
     ]
+    solver = args.solver
+    if not isinstance(solver, list):
+        solver_list = list()
+        solver_list.append(solver)
+    else:
+        solver_list = solver
     run_experiment(
         algorithms=algorithms,
         reps=args.reps,
         joint_featured_map_mode=args.joint_featured_map_mode,
         base_random_seed=args.base_random_seed,
         n_jobs=args.n_jobs,
+        solver_list=solver_list
     )
 
 
@@ -100,12 +108,13 @@ def run_experiment(
     joint_featured_map_mode,
     base_random_seed,
     n_jobs,
+    solver_list
 ):
     start_time = perf_counter()
 
     def job_producer() -> Generator:
-        for solver in Solver:
-            if solver.value == Solver.SAPS.value:
+        for solver in solver_list:
+            if solver == Solver.SAPS.value:
                 parametrizations = utility_functions.get_parameterization_saps()
                 features = utility_functions.get_features_saps()
                 running_time = utility_functions.get_run_times_saps()
@@ -118,7 +127,7 @@ def run_experiment(
                 for subset_size in [5, 6, 7, 8, 9, 10, 16]:
                     parameters = {
                         "joint_featured_map_mode": joint_featured_map_mode,
-                        "solver": solver.value,
+                        "solver": solver,
                         "subset_size": subset_size,
                         "parametrizations": parametrizations,
                         "features": features,
@@ -131,7 +140,7 @@ def run_experiment(
                         parameters,
                         reps,
                     )
-                    
+
     @contextlib.contextmanager
     def tqdm_joblib(tqdm_object):
         """Context manager to patch joblib to report into tqdm progress bar given as argument"""
@@ -167,7 +176,7 @@ def single_experiment(
     regret = np.zeros((reps, parameters["features"].shape[0]))
     execution_time = np.zeros(reps)
     print(f"{algorithm_name} with {solver} and {subset_size} started...")
-    for rep_id in tqdm(range(reps), desc=f"{algorithm_name}_{solver}_{subset_size}"):
+    for rep_id in range(reps):
         random_state = np.random.RandomState(
             (base_random_seed + hash(algorithm_name) + rep_id) % 2**32
         )

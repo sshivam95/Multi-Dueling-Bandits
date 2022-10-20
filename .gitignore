@@ -117,3 +117,7 @@ Execution_times_results/execution_time_UCB_saps_10.npy
 Execution_times_results/execution_time_UCB_saps_10.txt
 Regret_results/regret_Colstim_saps_16.txt
 Regret_results/regret_UCB_saps_16.txt
+Execution_times_results/execution_time_Colstim_saps_16.npy
+Execution_times_results/execution_time_UCB_saps_16.npy
+Regret_results/regret_Colstim_saps_16.npy
+Regret_results/regret_UCB_saps_16.npy
