@@ -30,8 +30,6 @@ def _main():
         algorithm.__name__: algorithm for algorithm in regret_minimizing_algorithms
     }
     algorithm_choices_string = " ".join(algorithm_names_to_algorithms.keys())
-    solver_list = {solver.value: solver.value for solver in Solver}
-    subset_list = {size: size for size in [5, 6, 7, 8, 9, 10, 16]}
     parser.add_argument(
         "-a, --algorithms",
         nargs="+",
@@ -46,7 +44,7 @@ def _main():
         dest="reps",
         default=10,
         type=int,
-        help="How often to run each algorithm. Results will be averaged. (default: 50)",
+        help="How often to run each algorithm. Results will be averaged. (default: 10)",
     )
     parser.add_argument(
         "--subset-size",
@@ -91,18 +89,6 @@ def _main():
 
     solver = args.solver
     subset_size = args.subset_size
-    # if not isinstance(solver, list):
-    #     solver_list = [solver_list[s] for s in solver]
-    #     # solver_list.append(solver)
-    # else:
-    #     solver_list = solver
-
-    # if not isinstance(subset_size_arg, list):
-    #     subset_size_list = list()
-    #     subset_size_list.append(subset_size_arg)
-    # else:
-    #     subset_size_list = subset_size_arg
-
     run_experiment(
         algorithms=algorithms,
         reps=args.reps,
@@ -161,17 +147,10 @@ def run_experiment(
 
     jobs = list(job_producer())
     result = Parallel(n_jobs=n_jobs, verbose=10)(jobs)
-    # regrets[rep_id] = regret
-    # execution_times[rep_id] = execution_time
-    # print("Saving files")
-    # np.save(f"Regret_results//regret_{algorithm_name}_{solver}_{subset_size}", regret)
-    # np.save(
-    #     f"Execution_times_results//execution_time_{algorithm_name}_{solver}_{subset_size}",
-    #     execution_time,
-    # )
     runtime = perf_counter() - start_time
     result_df = pd.concat(result)
     algorithm_name = result_df["algorithm"].unique()
+    print("Saving files...")
     for name in algorithm_name:
         for rep_id in range(reps):
             mask = (result_df["algorithm"] == name) & (result_df["rep_id"] == rep_id)
@@ -182,16 +161,6 @@ def run_experiment(
             f"Execution_times_results//execution_time_{name}_{solver}_{subset_size}",
             execution_times,
         )
-    # for i in range(len(result)):
-    #     rep_id = result[i]["rep_id "][0]
-    #     for algorithm_class in algorithms:
-    #         algorithm_name = algorithm_class.__name__
-    #         for j in range(reps):
-    #             if algorithm_name == result[i]["algorithm"][0]:
-    #                 if rep_id == j:
-    #                     regrets[rep_id] = result[i]["regret"].to_numpy()
-    #                     execution_time = result[i]["execution_time"].to_numpy()
-
     print(f"Experiments took {round(runtime)}s.")
 
 
@@ -226,9 +195,6 @@ def single_experiment(
         }
     )
     return data_frame
-
-    # np.savetxt(f"Regret_results//regret_{algorithm_name}_{solver}_{subset_size}.txt", regret)
-    # np.savetxt(f"Execution_times_results//execution_time_{algorithm_name}_{solver}_{subset_size}.txt", execution_time)
 
 
 if __name__ == "__main__":
