@@ -117,3 +117,15 @@ Execution_times_results/execution_time_UCB_saps_10.npy
 Execution_times_results/execution_time_UCB_saps_10.txt
 Regret_results/regret_Colstim_saps_16.txt
 Regret_results/regret_UCB_saps_16.txt
+dataset_icar/.DS_Store
+dataset_icar/cplex_rcw/cplex_rcw_rt_seed520.npy
+dataset_icar/cplex_rcw/cplex_rcw_rt_seed521.npy
+dataset_icar/cplex_rcw/cplex_rcw_rt_seed522.npy
+dataset_icar/cplex_rcw/cplex_rcw_rt_seed523.npy
+dataset_icar/cplex_rcw/cplex_rcw_rt_seed524.npy
+dataset_icar/cplex_region/cplex_region_rt_seed520.npy
+dataset_icar/cplex_region/cplex_region_rt_seed521.npy
+dataset_icar/cplex_region/cplex_region_rt_seed522.npy
+dataset_icar/cplex_region/cplex_region_rt_seed523.npy
+dataset_icar/cplex_region/cplex_region_rt_seed524.npy
+dataset_icar/minisat_cnfuzzdd/measurements.dump
