@@ -201,8 +201,6 @@ def single_experiment(
 ):
     solver = parameters["solver"]
     subset_size = parameters["subset_size"]
-    regret = np.zeros((reps, parameters["features"].shape[0]))
-    execution_time = np.zeros(reps)
     print(f"{algorithm_name} with {solver} and {subset_size} started...")
     
     parameters["random_state"] = random_state
@@ -212,8 +210,8 @@ def single_experiment(
             parameters_to_pass[parameter] = parameters[parameter]
     algorithm_object = algorithm_class(**parameters_to_pass)
     algorithm_object.run()
-    regret[rep_id] = algorithm_object.get_regret()
-    execution_time[rep_id] = algorithm_object.execution_time
+    regret = algorithm_object.get_regret()
+    execution_time = algorithm_object.execution_time
     print(f"Rep {rep_id}: {algorithm_name} with {solver} and {subset_size} finished...")
     data_frame = pd.DataFrame(
         {
