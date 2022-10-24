@@ -89,7 +89,10 @@ class Algorithm:
             context_feature_dimensions=self.context_dimensions,
         )
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
-        self.theta_init = self.random_state.rand(
+        # self.theta_init = self.random_state.rand(
+        #     self.context_dimensions
+        # )  # Initialize randomly
+        self.theta_init = np.zeros(
             self.context_dimensions
         )  # Initialize randomly
         self.theta_hat = copy.copy(
@@ -152,13 +155,16 @@ class Algorithm:
         self.execution_time = end_time - start_time
         print("Algorithm Finished...")
 
-    def get_skill_vector(self, theta, context_vector):
+    def get_skill_vector(self, theta, context_vector, exp=False):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
             self.feedback_mechanism.get_num_arms()
         )  # Line 5 in CPPL algorithm
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
+            if not exp:
+                skill_vector[arm] = np.inner(theta, context_vector[arm, :])
+            else:
+                skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
     def get_confidence_bounds(
