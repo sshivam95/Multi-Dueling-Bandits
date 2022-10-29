@@ -46,7 +46,7 @@ def _main():
         dest="reps",
         default=10,
         type=int,
-        help="How often to run each algorithm. Results will be averaged. (default: 50)",
+        help="How often to run each algorithm. Results will be averaged. (default: 10)",
     )
     parser.add_argument(
         "--subset-size",
