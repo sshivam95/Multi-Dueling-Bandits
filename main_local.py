@@ -31,6 +31,7 @@ def _main():
     }
     algorithm_choices_string = " ".join(algorithm_names_to_algorithms.keys())
     solver_list = [solver.value for solver in Solver]
+    subset_size_list = [5, 6, 7, 8, 9, 10, 16]
     parser.add_argument(
         "-a, --algorithms",
         nargs="+",
@@ -50,9 +51,9 @@ def _main():
     parser.add_argument(
         "--subset-size",
         dest="subset_size",
-        default=10,
+        default=subset_size_list,
         type=int,
-        help="How many arms the generated subset from original arms should contain. (default: 10)",
+        help=f"How many arms the generated subset from original arms should contain. (default: {subset_size_list})",
     )
     parser.add_argument(
         "--dataset",
@@ -89,19 +90,24 @@ def _main():
     algorithms = [
         algorithm_names_to_algorithms[algorithm] for algorithm in args.algorithms
     ]
-    solver = args.solver
+ 
     # if not isinstance(solver, list):
     #     solver_list = list()
     #     solver_list.append(solver for solver in solver.keys())
     # else:
-    solver_list = solver
+    solver_list = args.solver
+    if not isinstance(args.subset_size, list):
+        subset_size_list = [args.subset_size]
+    else:
+        subset_size_list = args.subset_size
     run_experiment(
         algorithms=algorithms,
         reps=args.reps,
         joint_featured_map_mode=args.joint_featured_map_mode,
         base_random_seed=args.base_random_seed,
         n_jobs=args.n_jobs,
-        solver_list=solver_list
+        solver_list=solver_list,
+        subset_size_list=subset_size_list
     )
 
 
@@ -111,10 +117,11 @@ def run_experiment(
     joint_featured_map_mode,
     base_random_seed,
     n_jobs,
-    solver_list
+    solver_list,
+    subset_size_list
 ):
     start_time = perf_counter()
-    regrets = np.zeros(reps)
+    regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
     
     def job_producer() -> Generator:
@@ -129,7 +136,7 @@ def run_experiment(
                 running_time = utility_functions.get_run_times_mips()
             for algorithm_class in algorithms:
                 algorithm_name = algorithm_class.__name__
-                for subset_size in [5, 6, 7, 8, 9, 10, 16]:
+                for subset_size in subset_size_list:#[5, 6, 7, 8, 9, 10, 16]:
                     for rep_id in range(reps):
                         random_state = np.random.RandomState(
                             (base_random_seed + hash(algorithm_name) + rep_id) % 2**32
@@ -147,7 +154,6 @@ def run_experiment(
                             algorithm_class,
                             algorithm_name,
                             parameters,
-                            reps,
                             rep_id
                         )
 
@@ -181,7 +187,7 @@ def run_experiment(
             for subset_size in subset_size_list:
                 for rep_id in range(reps):
                     mask = (result_df["solver"] == solver) & (result_df["algorithm"] == name) & (result_df["subset_size"] == subset_size) & (result_df["rep_id"] == rep_id)
-                    regrets[rep_id] = result_df[mask]["regret"]
+                    regrets[rep_id] = result_df[mask]["regret"].to_numpy()
                     execution_times[rep_id] = result_df[mask]["execution_time"].mean()
             np.save(f"Regret_results_theta0//regret_{name}_{solver}_{subset_size}", regrets)
             np.save(
@@ -196,7 +202,6 @@ def single_experiment(
     algorithm_class,
     algorithm_name,
     parameters,
-    reps,
     rep_id
 ):
     solver = parameters["solver"]
