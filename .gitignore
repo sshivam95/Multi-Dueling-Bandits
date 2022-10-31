@@ -17,3 +17,4 @@ regret_colstim_saps.txt
 regret_colstim.txt
 regret_ucb.txt
 execution_time_ucb.txt
+colstim_testing.py
