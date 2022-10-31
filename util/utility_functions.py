@@ -202,14 +202,8 @@ def get_run_times_mips():
         f"{Path.cwd()}",
         os.path.join("bids_arbitrary_data", "20_Params_times.csv"),
     )
-    running_times = []
-    with open(running_times_file, newline="") as csvfile:
-        running_times_data = list(csv.reader(csvfile))
-    for i in range(1, len(running_times_data)):
-        next_line = running_times_data[i][0]
-        next_rt_vector = [float(s) for s in re.findall(r"-?\d+\.?\d*", next_line)][2:]
-        running_times.append(next_rt_vector)
-    running_times = np.asarray(running_times)
+    running_times = pd.read_csv(running_times_file, delimiter="\t")
+    running_times = running_times.iloc[:, 1:].to_numpy(dtype=float)
     lambda_ = 10
     running_times = np.exp(-lambda_ * running_times)
     return running_times
@@ -220,20 +214,10 @@ def get_parameterization_mips():
         f"{Path.cwd()}",
         os.path.join("bids_arbitrary_data", "20_params_bids_arb.csv"),
     )
-    parametrizations = []
-    with open(parametrizations_file, newline="") as csvfile:
-        parametrizations_data = list(csv.reader(csvfile))
-    for i in range(1, len(parametrizations_data)):
-        next_line = parametrizations_data[i]
-        next_parameter_vector = [
-            float(s) for s in re.findall(r"-?\d+\.?\d*", next_line[0])
-        ]
-        del next_parameter_vector[0]
-        parametrizations.append(next_parameter_vector)
-    parametrizations = [e for e in parametrizations if len(e) == 115]
-    parametrizations = np.asarray(parametrizations)
+    params_mips = pd.read_csv(parametrizations_file, delimiter="\t")
+    params = params_mips.to_numpy() 
     parametrizations = preprocess(
-        data=parametrizations, variance_threshold=0.15, correlation_threshold=0.95
+        data=params[:, 1:], variance_threshold=0.15, correlation_threshold=0.95
     )
     return parametrizations
 

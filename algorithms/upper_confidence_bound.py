@@ -28,10 +28,10 @@ class UCB(Algorithm):
             joint_featured_map_mode=joint_featured_map_mode,
             solver=solver,
             omega=omega,
+            subset_size=subset_size,
             parametrizations=parametrizations,
             features=features,
             running_time=running_time,
-            subset_size=subset_size,
             logger_level=logger_level,
         )
         self.logger = logging.getLogger(logger_name)
@@ -42,7 +42,7 @@ class UCB(Algorithm):
         self.logger.debug(f"    -> Time Step: {self.time_step}")
         context_vector = self.context_matrix[self.time_step - 1]
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
-            theta=self.theta_bar, context_vector=context_vector
+            theta=self.theta_bar, context_vector=context_vector, exp=True
         )
         self.logger.debug(
             f"    -> Skill Vector: {self.skill_vector[self.time_step - 1]}"

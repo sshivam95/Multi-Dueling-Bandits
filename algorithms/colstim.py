@@ -19,10 +19,10 @@ class Colstim(Algorithm):
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
         running_time: Optional[np.array] = None,
+        subset_size: Optional[int] = multiprocessing.cpu_count(),
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
-        subset_size: Optional[int] = multiprocessing.cpu_count(),
         logger_name="COLSTIM",
         logger_level=logging.INFO,
     ) -> None:
@@ -36,9 +36,9 @@ class Colstim(Algorithm):
             subset_size=subset_size,
             logger_level=logger_level,
         )
-        self.logger.info("Initializing...")
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
+        self.logger.info("Initializing...")
 
         self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
         if exploration_length is not None:
@@ -80,7 +80,6 @@ class Colstim(Algorithm):
         self.learning_rate = 0.5
 
     def step(self):
-        self.logger.debug(f"    -> Time Step: {self.time_step}")
         context_vector = self.context_matrix[self.time_step - 1]
         if self.time_step > 1:
             self.update_estimated_theta(
