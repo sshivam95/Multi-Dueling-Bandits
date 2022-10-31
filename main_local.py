@@ -189,9 +189,9 @@ def run_experiment(
                     mask = (result_df["solver"] == solver) & (result_df["algorithm"] == name) & (result_df["subset_size"] == subset_size) & (result_df["rep_id"] == rep_id)
                     regrets[rep_id] = result_df[mask]["regret"].to_numpy()
                     execution_times[rep_id] = result_df[mask]["execution_time"].mean()
-                np.save(f"Regret_results_theta0//regret_{name}_{solver}_{subset_size}", regrets)
+                np.save(f"Regret_results_theta0//regret_{name}_{solver}_{subset_size}.npy", regrets)
                 np.save(
-                    f"Execution_times_results_theta0//execution_time_{name}_{solver}_{subset_size}",
+                    f"Execution_times_results_theta0//execution_time_{name}_{solver}_{subset_size}.npy",
                     execution_times,
                 )
     print(f"Experiments took {round(runtime)}s.")
