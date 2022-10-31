@@ -4,6 +4,7 @@ from algorithms.algorithm import Algorithm
 from algorithms.colstim import Colstim
 from algorithms.trace_the_best import TraceTheBest
 from algorithms.upper_confidence_bound import UCB
+from algorithms.colstim import Colstim
 
 # Pylint insists that regret_minimizing_algorithms and interfaces are constants and should be
 # named in UPPER_CASE. Technically that is correct, but it doesn't feel quite
