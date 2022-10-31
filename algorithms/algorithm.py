@@ -10,6 +10,7 @@ import numpy as np
 import scipy as sp
 from feedback.feedback_mechanism import FeedbackMechanism
 from stats.preference_estimate import PreferenceEstimate
+from tqdm import tqdm
 from util import metrics, utility_functions
 from util.constants import JointFeatureMode, Solver
 
@@ -88,6 +89,9 @@ class Algorithm:
             context_feature_dimensions=self.context_dimensions,
         )
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
+        # self.theta_init = self.random_state.rand(
+        #     self.context_dimensions
+        # )  # Initialize randomly
         self.theta_init = np.zeros(
             self.context_dimensions
         )  # Initialize randomly
@@ -141,23 +145,26 @@ class Algorithm:
         raise NotImplementedError
 
     def run(self):
-        self.logger.info("Running algorithm...")
+        print("Running algorithm...")
         start_time = perf_counter()
 
-        for self.time_step in range(1, self.time_horizon + 1):
+        for self.time_step in tqdm(range(1, self.time_horizon + 1)):
             self.step()
 
         end_time = perf_counter()
         self.execution_time = end_time - start_time
-        self.logger.info("Algorithm Finished...")
+        print("Algorithm Finished...")
 
-    def get_skill_vector(self, theta, context_vector):
+    def get_skill_vector(self, theta, context_vector, exp=False):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
             self.feedback_mechanism.get_num_arms()
         )  # Line 5 in CPPL algorithm
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
+            if not exp:
+                skill_vector[arm] = np.inner(theta, context_vector[arm, :])
+            else:
+                skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
     def get_confidence_bounds(
