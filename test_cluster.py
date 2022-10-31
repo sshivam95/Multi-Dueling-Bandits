@@ -161,11 +161,6 @@ def run_experiment(
             f"Execution_times_results_theta0//execution_time_{name}_{solver}_{subset_size}",
             execution_times,
         )
-        # np.save(f"regret_{name}_{solver}_{subset_size}_new", regrets)
-        # np.save(
-        #     f"execution_time_{name}_{solver}_{subset_size}_new",
-        #     execution_times,
-        # )
     print(f"Experiments took {round(runtime)}s.")
 
 
