@@ -343,11 +343,11 @@ def gradient(
     denominator = 0
     num = np.zeros((len(theta)))
     for arm in selection:
-        denominator = denominator + np.exp(np.dot(theta, context_vector[arm, :]))
+        denominator = denominator + np.exp(np.dot(theta, context_vector[arm]))
         num = num + (
-            context_vector[arm, :] * np.exp(np.dot(theta, context_vector[arm, :]))
+            context_vector[arm] * np.exp(np.dot(theta, context_vector[arm]))
         )
-    res = context_vector[winner_arm, :] - (num / denominator)
+    res = context_vector[winner_arm] - (num / denominator)
     return res.reshape(
         -1,
     )
@@ -378,24 +378,24 @@ def hessian(
     t_1 = np.zeros(dimension)
     for arm in selection:
         t_1 = t_1 + (
-            context_matrix[arm, :] * np.exp(np.dot(theta, context_matrix[arm, :]))
+            context_matrix[arm] * np.exp(np.dot(theta, context_matrix[arm]))
         )
     num_1 = np.outer(t_1, t_1)
     denominator_1 = 0
     for arm in selection:
         denominator_1 = (
-            denominator_1 + np.exp(np.dot(theta, context_matrix[arm, :])) ** 2
+            denominator_1 + np.exp(np.dot(theta, context_matrix[arm])) ** 2
         )
     s_1 = num_1 / denominator_1
     num_2 = 0
     for j in selection:
         num_2 = num_2 + (
-            np.exp(np.dot(theta, context_matrix[j, :]))
-            * np.outer(context_matrix[j, :], context_matrix[j, :])
+            np.exp(np.dot(theta, context_matrix[j]))
+            * np.outer(context_matrix[j], context_matrix[j])
         )
     denominator_2 = 0
     for arm in selection:
-        denominator_2 = denominator_2 + np.exp(np.dot(theta, context_matrix[arm, :]))
+        denominator_2 = denominator_2 + np.exp(np.dot(theta, context_matrix[arm]))
     s_2 = num_2 / denominator_2
     return s_1 - s_2
 
