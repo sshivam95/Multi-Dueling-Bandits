@@ -20,7 +20,7 @@ regret_minimizing_algorithms = [
     UCB,
     # TraceTheBest,
     Colstim,
-    # Colstim_v2  # TO-DO: Uncomment
+    Colstim_v2
 ]
 # This is not really needed, but otherwise zimports doesn't understand the
 # __all__ construct and complains that the Algorithm import is unnecessary.
