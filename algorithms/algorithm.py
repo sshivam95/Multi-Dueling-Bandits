@@ -167,6 +167,46 @@ class Algorithm:
                 skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
+    def get_selection_v2(self, quality_of_arms):
+        best_arm = np.array([(quality_of_arms).argmax()])
+        contrast_vector = np.empty(
+            self.feedback_mechanism.get_num_arms(), dtype=np.ndarray
+        )
+        for arm in self.feedback_mechanism.get_arms():
+            contrast_vector[arm] = self.get_contrast_vector(
+                context_vector_i=self.context_vector[arm, :],
+                context_vector_j=self.context_vector[best_arm, :],
+            )
+        self.contrast_skill_vector[self.time_step - 1] = self.get_contrast_skill_vector(
+            theta=self.theta_hat, contrast_vector=contrast_vector
+        )
+        self.confidence_width_bound[self.time_step - 1] = self.get_confidence_bounds(
+            selection=self.selection,
+            time_step=self.time_step,
+            context_vector=contrast_vector,
+            winner=self.winner,
+        )
+        quality_of_candidates = (
+            self.contrast_skill_vector[self.time_step - 1]
+            + self.confidence_width * self.confidence_width_bound[self.time_step - 1]
+        )
+        candidates = (-quality_of_candidates).argsort()[0 : self.subset_size]
+        candidates = np.setdiff1d(candidates, best_arm)
+        selection = np.append(best_arm, candidates)
+        return selection
+
+    def get_contrast_skill_vector(self, theta, contrast_vector):
+        # compute estimated contextualized utility parameters
+        contrast_skill_vector = np.zeros(
+            self.feedback_mechanism.get_num_arms()
+        )
+        for arm in range(self.feedback_mechanism.get_num_arms()):
+            contrast_skill_vector[arm] = np.inner(theta, contrast_vector[arm])
+        return contrast_skill_vector
+
+    def get_contrast_vector(self, context_vector_i, context_vector_j):
+        return (context_vector_i - context_vector_j).reshape(-1)
+
     def get_confidence_bounds(
         self, selection, time_step, context_vector, winner: Optional[int] = None
     ):
