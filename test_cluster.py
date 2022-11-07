@@ -118,7 +118,26 @@ def run_experiment(
         parametrizations = utility_functions.get_parameterization_mips()
         features = utility_functions.get_features_mips()
         running_time = utility_functions.get_run_times_mips()
-
+    if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
+        context_dimensions = (
+            parametrizations.shape[1] * features.shape[1]
+        )
+    elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
+        context_dimensions = (
+            parametrizations.shape[1] + features.shape[1]
+        )
+    elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
+        context_dimensions = 4
+        for index in range(
+            (features.shape[1] + parametrizations.shape[1]) - 2
+        ):
+            context_dimensions = context_dimensions + 3 + index
+    context_matrix = utility_functions.get_context_matrix(
+        parametrizations=parametrizations,
+        features=features,
+        joint_feature_map_mode=joint_featured_map_mode,
+        context_feature_dimensions=context_dimensions,
+    )
     regrets = np.zeros((reps, features.shape[0]))
     execution_times = np.zeros(reps)
 
@@ -132,6 +151,8 @@ def run_experiment(
                 "parametrizations": parametrizations,
                 "features": features,
                 "running_time": running_time,
+                "context_dimensions": context_dimensions,
+                "context_matrix": context_matrix
             }
             for rep_id in range(reps):
                 random_state = np.random.RandomState(
@@ -156,9 +177,9 @@ def run_experiment(
             mask = (result_df["algorithm"] == name) & (result_df["rep_id"] == rep_id)
             regrets[rep_id] = result_df[mask]["regret"]
             execution_times[rep_id] = result_df[mask]["execution_time"].mean()
-        np.save(f"Regret_results_theta0//regret_{name}_{solver}_{subset_size}", regrets)
+        np.save(f"Regret_results_theta0_50//regret_{name}_{solver}_{subset_size}", regrets)
         np.save(
-            f"Execution_times_results_theta0//execution_time_{name}_{solver}_{subset_size}",
+            f"Execution_times_results_theta0_50//execution_time_{name}_{solver}_{subset_size}",
             execution_times,
         )
     print(f"Experiments took {round(runtime)}s.")

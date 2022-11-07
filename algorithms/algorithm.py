@@ -27,6 +27,8 @@ class Algorithm:
         subset_size: Optional[int] = multiprocessing.cpu_count(),
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
+        context_matrix: Optional[np.array] = None,
+        context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
         logger_name="BaseAlgorithm",
         logger_level=logging.INFO,
@@ -67,34 +69,40 @@ class Algorithm:
         self.subset_size = subset_size
         self.logger.debug(f"    -> Subset size: {self.subset_size}")
 
-        if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
-            self.context_dimensions = (
-                self.parametrizations.shape[1] * self.features.shape[1]
-            )
-        elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
-            self.context_dimensions = (
-                self.parametrizations.shape[1] + self.features.shape[1]
-            )
-        elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
-            self.context_dimensions = 4
-            for index in range(
-                (self.features.shape[1] + self.parametrizations.shape[1]) - 2
-            ):
-                self.context_dimensions = self.context_dimensions + 3 + index
+        if context_dimensions is None:
+            if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
+                self.context_dimensions = (
+                    self.parametrizations.shape[1] * self.features.shape[1]
+                )
+            elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
+                self.context_dimensions = (
+                    self.parametrizations.shape[1] + self.features.shape[1]
+                )
+            elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
+                self.context_dimensions = 4
+                for index in range(
+                    (self.features.shape[1] + self.parametrizations.shape[1]) - 2
+                ):
+                    self.context_dimensions = self.context_dimensions + 3 + index
+        else:
+            self.context_dimensions = context_dimensions
 
-        self.context_matrix = utility_functions.get_context_matrix(
-            parametrizations=self.parametrizations,
-            features=self.features,
-            joint_feature_map_mode=joint_featured_map_mode,
-            context_feature_dimensions=self.context_dimensions,
-        )
+        if context_matrix is None:
+            self.context_matrix = utility_functions.get_context_matrix(
+                parametrizations=self.parametrizations,
+                features=self.features,
+                joint_feature_map_mode=joint_featured_map_mode,
+                context_feature_dimensions=self.context_dimensions,
+            )
+        else:
+            self.context_matrix = context_matrix
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
         # self.theta_init = self.random_state.rand(
         #     self.context_dimensions
         # )  # Initialize randomly
         self.theta_init = np.zeros(
             self.context_dimensions
-        )  # Initialize randomly
+        )  # Initialize with zeros
         self.theta_hat = copy.copy(
             self.theta_init
         )  # maximum-likelihood estimate of the weight parameter
@@ -155,16 +163,13 @@ class Algorithm:
         self.execution_time = end_time - start_time
         print("Algorithm Finished...")
 
-    def get_skill_vector(self, theta, context_vector, exp=False):
+    def get_skill_vector(self, theta, context_vector):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
             self.feedback_mechanism.get_num_arms()
-        )  # Line 5 in CPPL algorithm
+        )
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            if not exp:
-                skill_vector[arm] = np.inner(theta, context_vector[arm, :])
-            else:
-                skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
+            skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
     def get_selection_v2(self, quality_of_arms):
