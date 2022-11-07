@@ -3,11 +3,11 @@ import multiprocessing
 from typing import Optional
 
 import numpy as np
+
+from algorithms.algorithm import Algorithm
 from feedback.multi_duel_feedback import MultiDuelFeedback
 from util import utility_functions
 from util.constants import JointFeatureMode, Solver
-
-from algorithms.algorithm import Algorithm
 
 
 class Colstim(Algorithm):
@@ -16,10 +16,13 @@ class Colstim(Algorithm):
         random_state: Optional[np.random.RandomState] = None,
         joint_featured_map_mode: Optional[str] = JointFeatureMode.POLYNOMIAL.value,
         solver: Optional[str] = Solver.SAPS.value,
+        omega: Optional[float] = None,
+        subset_size: Optional[int] = ...,
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
+        context_matrix: Optional[np.array] = None,
+        context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
-        subset_size: Optional[int] = multiprocessing.cpu_count(),
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
@@ -30,10 +33,13 @@ class Colstim(Algorithm):
             random_state=random_state,
             joint_featured_map_mode=joint_featured_map_mode,
             solver=solver,
+            omega=omega,
+            subset_size=subset_size,
             parametrizations=parametrizations,
             features=features,
             running_time=running_time,
-            subset_size=subset_size,
+            context_matrix=context_matrix,
+            context_dimensions=context_dimensions,
             logger_level=logger_level,
         )
         self.logger = logging.getLogger(logger_name)
@@ -136,10 +142,13 @@ class Colstim_v2(Colstim):
         random_state: Optional[np.random.RandomState] = None,
         joint_featured_map_mode: Optional[str] = JointFeatureMode.POLYNOMIAL.value,
         solver: Optional[str] = Solver.SAPS.value,
+        omega: Optional[float] = None,
+        subset_size: Optional[int] = ...,
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
+        context_matrix: Optional[np.array] = None,
+        context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
-        subset_size: Optional[int] = multiprocessing.cpu_count(),
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
@@ -147,18 +156,21 @@ class Colstim_v2(Colstim):
         logger_level=logging.INFO,
     ) -> None:
         super().__init__(
-            random_state,
-            joint_featured_map_mode,
-            solver,
-            parametrizations,
-            features,
-            running_time,
-            subset_size,
-            exploration_length,
-            threshold_parameter,
-            confidence_width,
-            logger_name,
-            logger_level,
+            random_state=random_state,
+            joint_featured_map_mode=joint_featured_map_mode,
+            solver=solver,
+            omega=omega,
+            subset_size=subset_size,
+            parametrizations=parametrizations,
+            features=features,
+            running_time=running_time,
+            context_matrix=context_matrix,
+            context_dimensions=context_dimensions,
+            exploration_length=exploration_length,
+            threshold_parameter=threshold_parameter,
+            confidence_width=confidence_width,
+            logger_name=logger_name,
+            logger_level=logger_level,
         )
         self.contrast_skill_vector = np.zeros((self.time_horizon, self.num_arms))
         self.confidence_width_bound = np.zeros((self.time_horizon, self.num_arms))
@@ -232,9 +244,7 @@ class Colstim_v2(Colstim):
 
     def get_contrast_skill_vector(self, theta, contrast_vector):
         # compute estimated contextualized utility parameters
-        contrast_skill_vector = np.zeros(
-            self.feedback_mechanism.get_num_arms()
-        )
+        contrast_skill_vector = np.zeros(self.feedback_mechanism.get_num_arms())
         for arm in range(self.feedback_mechanism.get_num_arms()):
             contrast_skill_vector[arm] = np.inner(theta, contrast_vector[arm])
         return contrast_skill_vector

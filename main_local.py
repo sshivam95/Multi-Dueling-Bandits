@@ -133,6 +133,26 @@ def run_experiment(
                 parametrizations = utility_functions.get_parameterization_mips()
                 features = utility_functions.get_features_mips()
                 running_time = utility_functions.get_run_times_mips()
+            if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
+                context_dimensions = (
+                    parametrizations.shape[1] * features.shape[1]
+                )
+            elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
+                context_dimensions = (
+                    parametrizations.shape[1] + features.shape[1]
+                )
+            elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
+                context_dimensions = 4
+                for index in range(
+                    (features.shape[1] + parametrizations.shape[1]) - 2
+                ):
+                    context_dimensions = context_dimensions + 3 + index
+            context_matrix = utility_functions.get_context_matrix(
+                parametrizations=parametrizations,
+                features=features,
+                joint_feature_map_mode=joint_featured_map_mode,
+                context_feature_dimensions=context_dimensions,
+            )
             for algorithm_class in algorithms:
                 algorithm_name = algorithm_class.__name__
                 for subset_size in subset_size_list:#[5, 6, 7, 8, 9, 10, 16]:
@@ -147,6 +167,8 @@ def run_experiment(
                             "parametrizations": parametrizations,
                             "features": features,
                             "running_time": running_time,
+                            "context_dimensions": context_dimensions,
+                            "context_matrix": context_matrix
                         }
                         yield delayed(single_experiment)(
                             random_state,
