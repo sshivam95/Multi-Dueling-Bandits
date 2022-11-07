@@ -118,7 +118,26 @@ def run_experiment(
         parametrizations = utility_functions.get_parameterization_mips()
         features = utility_functions.get_features_mips()
         running_time = utility_functions.get_run_times_mips()
-
+    if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
+        context_dimensions = (
+            parametrizations.shape[1] * features.shape[1]
+        )
+    elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
+        context_dimensions = (
+            parametrizations.shape[1] + features.shape[1]
+        )
+    elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
+        context_dimensions = 4
+        for index in range(
+            (features.shape[1] + parametrizations.shape[1]) - 2
+        ):
+            context_dimensions = context_dimensions + 3 + index
+    context_matrix = utility_functions.get_context_matrix(
+        parametrizations=parametrizations,
+        features=features,
+        joint_feature_map_mode=joint_featured_map_mode,
+        context_feature_dimensions=context_dimensions,
+    )
     regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
 
@@ -132,6 +151,8 @@ def run_experiment(
                 "parametrizations": parametrizations,
                 "features": features,
                 "running_time": running_time,
+                "context_dimensions": context_dimensions,
+                "context_matrix": context_matrix
             }
             for rep_id in range(reps):
                 random_state = np.random.RandomState(
@@ -144,6 +165,7 @@ def run_experiment(
                     parameters,
                     rep_id,
                 )
+
     @contextlib.contextmanager
     def tqdm_joblib(tqdm_object):
         """Context manager to patch joblib to report into tqdm progress bar given as argument"""
@@ -190,7 +212,7 @@ def single_experiment(
     solver = parameters["solver"]
     subset_size = parameters["subset_size"]
 
-    print(f"Rep {rep_id}: {algorithm_name} with {solver} and {subset_size} started...")
+    print(f"\nRep {rep_id}:{algorithm_name} with {solver} and {subset_size} started...")
 
     parameters["random_state"] = task_random_state
     parameters_to_pass = dict()
@@ -201,7 +223,7 @@ def single_experiment(
     algorithm_object.run()
     regret = algorithm_object.get_regret()
     execution_time = algorithm_object.execution_time
-    print(f"Rep {rep_id}: {algorithm_name} with {solver} and {subset_size} finished...")
+    print(f"\nRep {rep_id}: {algorithm_name} with {solver} and {subset_size} finished...")
     data_frame = pd.DataFrame(
         {
             "rep_id": rep_id,

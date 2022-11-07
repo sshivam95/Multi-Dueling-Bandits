@@ -8,7 +8,7 @@ from typing import Optional
 
 import numpy as np
 import scipy as sp
-from feedback.feedback_mechanism import FeedbackMechanism
+from feedback.multi_duel_feedback import MultiDuelFeedback
 from stats.preference_estimate import PreferenceEstimate
 from tqdm import tqdm
 from util import metrics, utility_functions
@@ -27,6 +27,8 @@ class Algorithm:
         subset_size: Optional[int] = multiprocessing.cpu_count(),
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
+        context_matrix: Optional[np.array] = None,
+        context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
         logger_name="BaseAlgorithm",
         logger_level=logging.INFO,
@@ -38,7 +40,6 @@ class Algorithm:
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
         )
-        self.feedback_mechanism: FeedbackMechanism = None
 
         if features is None and parametrizations is None and running_time is None:
             if solver == Solver.SAPS.value:
@@ -55,6 +56,7 @@ class Algorithm:
             self.running_time = running_time
 
         self.num_arms = self.parametrizations.shape[0]
+        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")
@@ -67,34 +69,40 @@ class Algorithm:
         self.subset_size = subset_size
         self.logger.debug(f"    -> Subset size: {self.subset_size}")
 
-        if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
-            self.context_dimensions = (
-                self.parametrizations.shape[1] * self.features.shape[1]
-            )
-        elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
-            self.context_dimensions = (
-                self.parametrizations.shape[1] + self.features.shape[1]
-            )
-        elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
-            self.context_dimensions = 4
-            for index in range(
-                (self.features.shape[1] + self.parametrizations.shape[1]) - 2
-            ):
-                self.context_dimensions = self.context_dimensions + 3 + index
+        if context_dimensions is None:
+            if joint_featured_map_mode == JointFeatureMode.KRONECKER.value:
+                self.context_dimensions = (
+                    self.parametrizations.shape[1] * self.features.shape[1]
+                )
+            elif joint_featured_map_mode == JointFeatureMode.CONCATENATION.value:
+                self.context_dimensions = (
+                    self.parametrizations.shape[1] + self.features.shape[1]
+                )
+            elif joint_featured_map_mode == JointFeatureMode.POLYNOMIAL.value:
+                self.context_dimensions = 4
+                for index in range(
+                    (self.features.shape[1] + self.parametrizations.shape[1]) - 2
+                ):
+                    self.context_dimensions = self.context_dimensions + 3 + index
+        else:
+            self.context_dimensions = context_dimensions
 
-        self.context_matrix = utility_functions.get_context_matrix(
-            parametrizations=self.parametrizations,
-            features=self.features,
-            joint_feature_map_mode=joint_featured_map_mode,
-            context_feature_dimensions=self.context_dimensions,
-        )
+        if context_matrix is None:
+            self.context_matrix = utility_functions.get_context_matrix(
+                parametrizations=self.parametrizations,
+                features=self.features,
+                joint_feature_map_mode=joint_featured_map_mode,
+                context_feature_dimensions=self.context_dimensions,
+            )
+        else:
+            self.context_matrix = context_matrix
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
         # self.theta_init = self.random_state.rand(
         #     self.context_dimensions
         # )  # Initialize randomly
         self.theta_init = np.zeros(
             self.context_dimensions
-        )  # Initialize randomly
+        )  # Initialize with zeros
         self.theta_hat = copy.copy(
             self.theta_init
         )  # maximum-likelihood estimate of the weight parameter
@@ -155,17 +163,54 @@ class Algorithm:
         self.execution_time = end_time - start_time
         print("Algorithm Finished...")
 
-    def get_skill_vector(self, theta, context_vector, exp=False):
+    def get_skill_vector(self, theta, context_vector):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
             self.feedback_mechanism.get_num_arms()
-        )  # Line 5 in CPPL algorithm
+        )
         for arm in range(self.feedback_mechanism.get_num_arms()):
-            if not exp:
-                skill_vector[arm] = np.inner(theta, context_vector[arm, :])
-            else:
-                skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
+            skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
+
+    def get_selection_v2(self, quality_of_arms):
+        best_arm = np.array([(quality_of_arms).argmax()])
+        contrast_vector = np.empty(
+            self.feedback_mechanism.get_num_arms(), dtype=np.ndarray
+        )
+        for arm in self.feedback_mechanism.get_arms():
+            contrast_vector[arm] = self.get_contrast_vector(
+                context_vector_i=self.context_vector[arm, :],
+                context_vector_j=self.context_vector[best_arm, :],
+            )
+        self.contrast_skill_vector[self.time_step - 1] = self.get_contrast_skill_vector(
+            theta=self.theta_hat, contrast_vector=contrast_vector
+        )
+        self.confidence_width_bound[self.time_step - 1] = self.get_confidence_bounds(
+            selection=self.selection,
+            time_step=self.time_step,
+            context_vector=contrast_vector,
+            winner=self.winner,
+        )
+        quality_of_candidates = (
+            self.contrast_skill_vector[self.time_step - 1]
+            + self.confidence_width * self.confidence_width_bound[self.time_step - 1]
+        )
+        candidates = (-quality_of_candidates).argsort()[0 : self.subset_size]
+        candidates = np.setdiff1d(candidates, best_arm)
+        selection = np.append(best_arm, candidates)
+        return selection
+
+    def get_contrast_skill_vector(self, theta, contrast_vector):
+        # compute estimated contextualized utility parameters
+        contrast_skill_vector = np.zeros(
+            self.feedback_mechanism.get_num_arms()
+        )
+        for arm in range(self.feedback_mechanism.get_num_arms()):
+            contrast_skill_vector[arm] = np.inner(theta, contrast_vector[arm])
+        return contrast_skill_vector
+
+    def get_contrast_vector(self, context_vector_i, context_vector_j):
+        return (context_vector_i - context_vector_j).reshape(-1)
 
     def get_confidence_bounds(
         self, selection, time_step, context_vector, winner: Optional[int] = None

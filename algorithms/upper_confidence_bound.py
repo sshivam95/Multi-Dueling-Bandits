@@ -3,10 +3,10 @@ import multiprocessing
 from typing import Optional
 
 import numpy as np
-from feedback.multi_duel_feedback import MultiDuelFeedback
-from util.constants import JointFeatureMode, Solver
 
 from algorithms.algorithm import Algorithm
+from feedback.multi_duel_feedback import MultiDuelFeedback
+from util.constants import JointFeatureMode, Solver
 
 
 class UCB(Algorithm):
@@ -16,9 +16,41 @@ class UCB(Algorithm):
         joint_featured_map_mode: Optional[str] = JointFeatureMode.POLYNOMIAL.value,
         solver: Optional[str] = Solver.SAPS.value,
         omega: Optional[float] = None,
-        subset_size: Optional[int] = multiprocessing.cpu_count(),
+        subset_size: Optional[int] = ...,
         parametrizations: Optional[np.array] = None,
         features: Optional[np.array] = None,
+        context_matrix: Optional[np.array] = None,
+        context_dimensions: Optional[int] = None,
+        running_time: Optional[np.array] = None,
+        logger_name="BaseAlgorithm",
+        logger_level=logging.INFO,
+    ) -> None:
+        super().__init__(
+            random_state,
+            joint_featured_map_mode,
+            solver,
+            omega,
+            subset_size,
+            parametrizations,
+            features,
+            context_matrix,
+            context_dimensions,
+            running_time,
+            logger_name,
+            logger_level,
+        )
+
+    def __init__(
+        self,
+        random_state: Optional[np.random.RandomState] = None,
+        joint_featured_map_mode: Optional[str] = JointFeatureMode.POLYNOMIAL.value,
+        solver: Optional[str] = Solver.SAPS.value,
+        omega: Optional[float] = None,
+        subset_size: Optional[int] = ...,
+        parametrizations: Optional[np.array] = None,
+        features: Optional[np.array] = None,
+        context_matrix: Optional[np.array] = None,
+        context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
         logger_name="UpperConfidenceBound",
         logger_level=logging.INFO,
@@ -31,6 +63,8 @@ class UCB(Algorithm):
             subset_size=subset_size,
             parametrizations=parametrizations,
             features=features,
+            context_matrix=context_matrix,
+            context_dimensions=context_dimensions,
             running_time=running_time,
             logger_level=logger_level,
         )
@@ -42,7 +76,7 @@ class UCB(Algorithm):
         self.logger.debug(f"    -> Time Step: {self.time_step}")
         context_vector = self.context_matrix[self.time_step - 1]
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
-            theta=self.theta_bar, context_vector=context_vector, exp=True
+            theta=self.theta_bar, context_vector=context_vector
         )
         self.logger.debug(
             f"    -> Skill Vector: {self.skill_vector[self.time_step - 1]}"
