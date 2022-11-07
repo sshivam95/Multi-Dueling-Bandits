@@ -166,8 +166,25 @@ def run_experiment(
                     rep_id,
                 )
 
+    @contextlib.contextmanager
+    def tqdm_joblib(tqdm_object):
+        """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+        class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+            def __call__(self, *args, **kwargs):
+                tqdm_object.update(n=self.batch_size)
+                return super().__call__(*args, **kwargs)
+
+        old_batch_callback = joblib.parallel.BatchCompletionCallBack
+        joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+        try:
+            yield tqdm_object
+        finally:
+            joblib.parallel.BatchCompletionCallBack = old_batch_callback
+            tqdm_object.close()
+
     jobs = list(job_producer())
-    result = Parallel(n_jobs=n_jobs, verbose=10)(jobs)
+    with tqdm_joblib(tqdm(desc="Run Multi-Dueling Bandits experiments", total=len(jobs))) as progress_bar:
+        result = Parallel(n_jobs=n_jobs, verbose=10)(jobs)
     runtime = perf_counter() - start_time
     result_df = pd.concat(result)
     algorithm_name = result_df["algorithm"].unique()
@@ -177,9 +194,9 @@ def run_experiment(
             mask = (result_df["algorithm"] == name) & (result_df["rep_id"] == rep_id)
             regrets[rep_id] = result_df[mask]["regret"]
             execution_times[rep_id] = result_df[mask]["execution_time"].mean()
-        np.save(f"Regret_results_theta0_50//regret_{name}_{solver}_{subset_size}", regrets)
+        np.save(f"Regret_results_theta0_50//regret_{name}_{solver}_{subset_size}.npy", regrets)
         np.save(
-            f"Execution_times_results_theta0_50//execution_time_{name}_{solver}_{subset_size}",
+            f"Execution_times_results_theta0_50//execution_time_{name}_{solver}_{subset_size}.npy",
             execution_times,
         )
     print(f"Experiments took {round(runtime)}s.")
