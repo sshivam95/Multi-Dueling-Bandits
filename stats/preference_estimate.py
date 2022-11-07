@@ -109,6 +109,7 @@ class PreferenceEstimate:
         self.wins_duel = np.zeros((num_arms, num_arms))
         self.wins = np.zeros(num_arms)
         self.losses = np.zeros(num_arms)
+        self.samples = np.zeros(num_arms)
         self.confidence_radius = confidence_radius
         self.skill_vector = np.zeros(num_arms)
         self._cached_mean_estimate = np.full((num_arms, num_arms), 0.5)
@@ -161,8 +162,11 @@ class PreferenceEstimate:
         self._cached_radius = None
 
     def enter_sample(self, winner_arm: Union[int, np.array]) -> None:
-
         self.wins[winner_arm] += 1
+        for arm in range(self.num_arms):
+            if arm != winner_arm:
+                self.losses[arm] += 1
+            self.samples[arm] = self.wins[arm] + self.losses[arm]
 
     def set_mean_estimate(self, first_arm_index, second_arm_index, first_won, samples):
         prev = self._cached_mean_estimate[first_arm_index][second_arm_index]
