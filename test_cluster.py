@@ -12,7 +12,7 @@ import pandas as pd
 from joblib import Parallel, delayed
 from tqdm import tqdm
 
-from algorithms import algorithm, regret_minimizing_algorithms
+from algorithms import regret_minimizing_algorithms
 from util import utility_functions
 from util.constants import JointFeatureMode, Solver
 
@@ -138,10 +138,10 @@ def run_experiment(
         joint_feature_map_mode=joint_featured_map_mode,
         context_feature_dimensions=context_dimensions,
     )
-    regrets = np.zeros((reps, features.shape[0]))
+    regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
 
-    def job_producer():
+    def job_producer() -> Generator:
         for algorithm_class in algorithms:
             algorithm_name = algorithm_class.__name__
             parameters = {
@@ -165,6 +165,37 @@ def run_experiment(
                     parameters,
                     rep_id,
                 )
+    @contextlib.contextmanager
+    def tqdm_joblib(tqdm_object):
+        """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+        class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+            def __call__(self, *args, **kwargs):
+                tqdm_object.update(n=self.batch_size)
+                return super().__call__(*args, **kwargs)
+
+        old_batch_callback = joblib.parallel.BatchCompletionCallBack
+        joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+        try:
+            yield tqdm_object
+        finally:
+            joblib.parallel.BatchCompletionCallBack = old_batch_callback
+            tqdm_object.close()
+
+    @contextlib.contextmanager
+    def tqdm_joblib(tqdm_object):
+        """Context manager to patch joblib to report into tqdm progress bar given as argument"""
+        class TqdmBatchCompletionCallback(joblib.parallel.BatchCompletionCallBack):
+            def __call__(self, *args, **kwargs):
+                tqdm_object.update(n=self.batch_size)
+                return super().__call__(*args, **kwargs)
+
+        old_batch_callback = joblib.parallel.BatchCompletionCallBack
+        joblib.parallel.BatchCompletionCallBack = TqdmBatchCompletionCallback
+        try:
+            yield tqdm_object
+        finally:
+            joblib.parallel.BatchCompletionCallBack = old_batch_callback
+            tqdm_object.close()
 
     @contextlib.contextmanager
     def tqdm_joblib(tqdm_object):
