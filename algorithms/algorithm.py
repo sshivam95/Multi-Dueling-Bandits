@@ -8,7 +8,7 @@ from typing import Optional
 
 import numpy as np
 import scipy as sp
-from feedback.feedback_mechanism import FeedbackMechanism
+from feedback.multi_duel_feedback import MultiDuelFeedback
 from stats.preference_estimate import PreferenceEstimate
 from tqdm import tqdm
 from util import metrics, utility_functions
@@ -38,7 +38,6 @@ class Algorithm:
         self.random_state = (
             random_state if random_state is not None else np.random.RandomState()
         )
-        self.feedback_mechanism: FeedbackMechanism = None
 
         if features is None and parametrizations is None and running_time is None:
             if solver == Solver.SAPS.value:
@@ -55,6 +54,7 @@ class Algorithm:
             self.running_time = running_time
 
         self.num_arms = self.parametrizations.shape[0]
+        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")

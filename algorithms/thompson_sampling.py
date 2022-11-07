@@ -37,23 +37,27 @@ class ThompsonSampling(Algorithm):
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
         self.logger.info("Initializing...")
-
-        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
-        self.theta_hat = np.zeros((self.num_arms, self.context_dimensions))
+        # self.theta_hat = np.zeros((self.num_arms, self.context_dimensions))
     
     def step(self):
         context_vector = self.context_matrix[self.time_step - 1]
         wins = self.preference_estimate.wins
         losses = self.preference_estimate.losses
-        for i in range(self.num_arms):
-            self.theta_hat[i] = self.random_state.beta(wins[i] + 1, losses[i] + 1, size=self.context_dimensions)
-        self.skill_vector[self.time_step - 1] = np.mean(np.exp(np.inner(self.theta_hat, context_vector)), axis=0)
+        
+        # -----------------WITH CONTEXT----------------
+        # for i in range(self.num_arms):
+        #     self.theta_hat[i] = self.random_state.beta(wins[i] + 1, losses[i] + 1, size=self.context_dimensions)
+        # self.skill_vector[self.time_step - 1] = np.mean(np.exp(np.inner(self.theta_hat, context_vector)), axis=0)
         # self.confidence[self.time_step - 1] = self.get_confidence_bounds(
         #     selection=self.selection,
         #     time_step=self.time_step,
         #     context_vector=context_vector,
         #     winner=self.winner,
         # )
+        
+        # -----------------WITHOUT CONTEXT----------------
+        self.skill_vector[self.time_step - 1] = np.exp(self.random_state.beta(wins + 1, losses + 1))
+        
         self.selection = self.get_selection(quality_of_arms=self.skill_vector[self.time_step - 1])
         self.winner = self.feedback_mechanism.multi_duel(
             selection=self.selection, running_time=self.running_time[self.time_step - 1]
