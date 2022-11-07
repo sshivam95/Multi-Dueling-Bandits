@@ -11,3 +11,5 @@ colstim_testing.py
 Execution_times_results_v2/*
 Regret_results_v2/*
 venv/*
+singularity/compile_env.sh
+singularity/pbcppl.def
