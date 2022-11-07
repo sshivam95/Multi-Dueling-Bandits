@@ -212,7 +212,7 @@ def single_experiment(
     solver = parameters["solver"]
     subset_size = parameters["subset_size"]
 
-    print(f"{algorithm_name} with {solver} and {subset_size} started...")
+    print(f"\nRep {rep_id}:{algorithm_name} with {solver} and {subset_size} started...")
 
     parameters["random_state"] = task_random_state
     parameters_to_pass = dict()
@@ -223,7 +223,7 @@ def single_experiment(
     algorithm_object.run()
     regret = algorithm_object.get_regret()
     execution_time = algorithm_object.execution_time
-    print(f"Rep {rep_id}: {algorithm_name} with {solver} and {subset_size} finished...")
+    print(f"\nRep {rep_id}: {algorithm_name} with {solver} and {subset_size} finished...")
     data_frame = pd.DataFrame(
         {
             "rep_id": rep_id,
