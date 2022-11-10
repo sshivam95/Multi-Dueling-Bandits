@@ -11,4 +11,4 @@ class MultiDuelFeedback(FeedbackMechanism):
     def multi_duel(self, selection: np.array, running_time: np.array) -> np.array:
         true_skills = running_time[selection]
         winners = np.argmax(true_skills)
-        return winners
+        return selection[winners]
