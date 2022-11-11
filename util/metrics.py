@@ -1,12 +1,17 @@
 import numpy as np
+from util.utility_functions import argmax_set
 
 
 def regret_preselection_saps(skill_vector, selection):
     selection_set_size = len(selection)
     # average performance of best set
-    best_item = np.argmax(skill_vector)
-    if best_item in selection:
+    # best_item = np.argmax(skill_vector)
+    best_items = argmax_set(skill_vector)
+    mask = np.isin(best_items, selection)
+    if True in mask:
         return 0
+    # if best_item in selection:
+    #     return 0
     else:
         S_star = (-skill_vector).argsort()[0:selection_set_size]
         S_star_perf = 0
