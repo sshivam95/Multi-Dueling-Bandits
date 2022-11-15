@@ -1,7 +1,9 @@
 import logging
+from time import perf_counter
 from typing import Optional
 
 import numpy as np
+from tqdm import tqdm
 
 from algorithms.algorithm import Algorithm
 from feedback.multi_duel_feedback import MultiDuelFeedback
@@ -80,18 +82,10 @@ class Colstim(Algorithm):
             )
         self.perturbation_variable = np.zeros(self.num_arms)
         self.trimmed_sampled_perturbation_variable = np.zeros(self.num_arms)
-        self.learning_rate = 0.5
 
     def step(self):
         context_vector = self.context_matrix[self.time_step - 1]
-        if self.time_step > 1:
-            self.update_estimated_theta(
-                selection=self.selection,
-                time_step=self.time_step,
-                winner=self.winner,
-                gamma_t=self.learning_rate,
-            )
-            self.update_mean_theta(self.time_step)
+
         self.sample_perturbation_variable()
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
             theta=self.theta_hat, context_vector=context_vector
@@ -119,6 +113,12 @@ class Colstim(Algorithm):
         self.logger.debug(f"    -> Selection Winner: {self.winner}")
         self.preference_estimate.enter_sample(winner_arm=self.winner)
         self.logger.debug("Updating Theta...")
+        self.update_estimated_theta(
+            selection=self.selection,
+            time_step=self.time_step,
+            winner=self.winner,
+        )
+        self.update_mean_theta(self.time_step)
         self.compute_regret(selection=self.selection, time_step=self.time_step)
 
     def sample_perturbation_variable(self):
@@ -172,14 +172,22 @@ class Colstim_v2(Colstim):
         self.contrast_skill_vector = np.zeros((self.time_horizon, self.num_arms))
         self.confidence_width_bound = np.zeros((self.time_horizon, self.num_arms))
 
+    def run(self):
+        print("Running algorithm...")
+        start_time = perf_counter()
+
+        for self.time_step in tqdm(range(1, self.time_horizon + 1)):
+            self.step()
+
+        end_time = perf_counter()
+        self.execution_time = end_time - start_time
+        print("Algorithm Finished...")
+
     def step(self):
         self.context_vector = self.context_matrix[self.time_step - 1]
         if self.time_step > 1:
             self.update_estimated_theta(
-                selection=self.selection,
-                time_step=self.time_step,
-                winner=self.winner,
-                gamma_t=self.learning_rate,
+                selection=self.selection, time_step=self.time_step, winner=self.winner
             )
             self.update_mean_theta(self.time_step)
         self.sample_perturbation_variable()
@@ -208,7 +216,6 @@ class Colstim_v2(Colstim):
         self.logger.debug("Duels finished...")
         self.logger.debug(f"    -> Selection Winner: {self.winner}")
         self.preference_estimate.enter_sample(winner_arm=self.winner)
-        self.logger.debug("Updating Theta...")
         self.compute_regret(selection=self.selection, time_step=self.time_step)
 
     def get_selection_v2(self, quality_of_arms):
