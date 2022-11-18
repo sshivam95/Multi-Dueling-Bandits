@@ -3,7 +3,7 @@
 from algorithms.algorithm import Algorithm
 from algorithms.colstim import Colstim, Colstim_v2
 from algorithms.self_sparring import IndependentSelfSparring
-from algorithms.thompson_sampling import ThompsonSampling
+from algorithms.thompson_sampling import ThompsonSampling, ThompsonSamplingContextual
 from algorithms.upper_confidence_bound import UCB
 
 # Pylint insists that regret_minimizing_algorithms and interfaces are constants and should be
@@ -22,6 +22,7 @@ regret_minimizing_algorithms = [
     Colstim,
     Colstim_v2,
     ThompsonSampling,
+    ThompsonSamplingContextual,
     IndependentSelfSparring,
 ]
 # This is not really needed, but otherwise zimports doesn't understand the
