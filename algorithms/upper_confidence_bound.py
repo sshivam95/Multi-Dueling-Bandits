@@ -90,12 +90,37 @@ class UCB(Algorithm):
         )
         self.logger.debug(f"    -> Confidence: {self.confidence[self.time_step - 1]}")
 
-        quality_of_arms = (
-            self.skill_vector[self.time_step - 1] + self.confidence[self.time_step - 1]
-        )
-        self.logger.debug(f"    -> Quality of arms: {quality_of_arms}")
+        quality_of_arms_explore = self.skill_vector[self.time_step - 1]
+        quality_of_arms_exploit = self.confidence[self.time_step - 1]
 
-        self.selection = self.get_selection(quality_of_arms=quality_of_arms)
+        # ToDo: Change parameters of get selection to exclude redundent arms
+        if self.subset_size % 2 == 0:
+            selection_explore = self.get_selection(
+                quality_of_arms=quality_of_arms_explore,
+                subset_size=self.subset_size / 2,
+            )
+            selection_exploit = self.get_selection(
+                quality_of_arms=quality_of_arms_exploit,
+                subset_size=self.subset_size / 2,
+            )
+        else:
+            selection_explore = self.get_selection(
+                quality_of_arms=quality_of_arms_explore,
+                subset_size=(self.subset_size - 1) / 2,
+            )
+            selection_exploit = self.get_selection(
+                quality_of_arms=quality_of_arms_exploit,
+                subset_size=(self.subset_size - 1) / 2,
+            )
+            selection_middle = self.get_selection(
+                quality_of_arms=quality_of_arms_explore + quality_of_arms_exploit,
+                subset_size=1,
+            )
+
+        if selection_explore != selection_exploit != selection_middle:
+            self.selection = np.concatenate(
+                np.concatenate(selection_explore, selection_middle), selection_exploit
+            )
         self.logger.debug(f"    -> Selection: {self.selection}")
 
         self.logger.debug("Starting Duels...")

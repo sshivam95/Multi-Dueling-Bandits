@@ -162,7 +162,7 @@ class Algorithm:
         end_time = perf_counter()
         self.execution_time = end_time - start_time
         print("Algorithm Finished...")
-
+   
     def get_skill_vector(self, theta, context_vector):
         # compute estimated contextualized utility parameters
         skill_vector = np.zeros(
@@ -398,7 +398,7 @@ class Algorithm:
         )
         return I_hat
 
-    def get_selection(self, quality_of_arms):
+    def get_selection(self, quality_of_arms, subset_size):
         """_summary_
 
         Parameters
@@ -408,7 +408,7 @@ class Algorithm:
         time_step : _type_
             _description_
         """
-        return (-quality_of_arms).argsort()[0 : self.subset_size]
+        return (-quality_of_arms).argsort()[0 : int(subset_size)]
 
     def update_estimated_theta(
         self, selection, time_step, winner, gamma_t: Optional[float] = None
