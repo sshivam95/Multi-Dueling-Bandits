@@ -97,12 +97,12 @@ class Algorithm:
         else:
             self.context_matrix = context_matrix
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
-        # self.theta_init = self.random_state.rand(
-        #     self.context_dimensions
-        # )  # Initialize randomly
-        self.theta_init = np.zeros(
+        self.theta_init = self.random_state.rand(
             self.context_dimensions
-        )  # Initialize with zeros
+        )  # Initialize randomly
+        # self.theta_init = np.zeros(
+        #     self.context_dimensions
+        # )  # Initialize with zeros
         self.theta_hat = copy.copy(
             self.theta_init
         )  # maximum-likelihood estimate of the weight parameter
