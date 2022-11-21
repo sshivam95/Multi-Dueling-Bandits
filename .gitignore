@@ -13,3 +13,4 @@ Regret_results_v2/*
 venv/*
 singularity/compile_env.sh
 singularity/pbcppl.def
+debug.py
