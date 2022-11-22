@@ -39,13 +39,13 @@ class IndependentSelfSparring(Algorithm):
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
         self.logger.info("Initializing...")
-        
+
         self.learning_rate = learning_rate
         self.wins = self.preference_estimate.wins
         self.losses = self.preference_estimate.losses
-        
+
     def step(self) -> None:
-        context_vector = self.context_matrix[self.time_step - 1]  
+        context_vector = self.context_matrix[self.time_step - 1]
         self.theta_hat = np.zeros((self.num_arms, self.context_dimensions))
         pairwise_feedback_matrix = np.zeros((self.subset_size, self.subset_size))
         # -----------------WITH CONTEXT----------------
@@ -57,7 +57,6 @@ class IndependentSelfSparring(Algorithm):
         self.skill_vector[self.time_step - 1] = np.mean(
             np.exp(np.inner(self.theta_hat, context_vector)), axis=0
         )
-        
 
         self.selection = self.get_selection(
             quality_of_arms=self.skill_vector[self.time_step - 1]
@@ -72,14 +71,13 @@ class IndependentSelfSparring(Algorithm):
                     pairwise_feedback_matrix[index_j][index_k] = 1
                 if j == k:
                     pairwise_feedback_matrix[index_j][index_k] = np.nan
-                
-        
+
         for index_j, j in enumerate(self.selection):
             for index_k, k in enumerate(self.selection):
                 if not np.isnan(pairwise_feedback_matrix[index_j][index_k]):
                     self.wins[j] += self.learning_rate * pairwise_feedback_matrix[index_j][index_k]
                     self.losses[j] += self.learning_rate * (1 - pairwise_feedback_matrix[index_j][index_k])
-            
+
         self.compute_regret(selection=self.selection, time_step=self.time_step)
 
 class IndependentSelfSparringContextual(Algorithm):
@@ -117,11 +115,11 @@ class IndependentSelfSparringContextual(Algorithm):
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
         self.logger.info("Initializing...")
-        
+
         self.learning_rate = learning_rate
 
         if epsilon is None:
-            epsilon = 1/ np.log(self.time_horizon + 1)
+            epsilon = 1 / np.log(self.time_horizon + 1)
         self.B = np.ones((self.num_arms, self.context_dimensions))
         self.mu_hat = np.zeros((self.num_arms, self.context_dimensions))
         self.f = np.zeros((self.num_arms, self.context_dimensions))
@@ -131,17 +129,16 @@ class IndependentSelfSparringContextual(Algorithm):
             * np.log(np.divide(1, failure_probability))
         )
         self.context_vector = None
-        
+
     def step(self) -> None:
-        standard_deviation = np.divide(self.v**2, self.B)
+        standard_deviation = np.divide(self.v ** 2, self.B)
         self.context_vector = self.context_matrix[self.time_step - 1]
         theta = self.random_state.normal(self.mu_hat, standard_deviation)
         skill_vector = np.zeros(self.num_arms)
         for arm in range(self.num_arms):
             skill_vector[arm] = np.exp(np.inner(theta[arm, :], self.context_vector[arm, :]))
-        
+
         self.skill_vector[self.time_step - 1] = skill_vector
-        
 
         self.selection = self.get_selection(
             quality_of_arms=self.skill_vector[self.time_step - 1]
@@ -150,11 +147,11 @@ class IndependentSelfSparringContextual(Algorithm):
             selection=self.selection, running_time=self.running_time[self.time_step - 1]
         )
         self.preference_estimate.enter_sample(winner_arm=self.winner)
-                
+
         self.compute_regret(selection=self.selection, time_step=self.time_step)
         for arm in self.selection:
             self.B[arm] += self.learning_rate * np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
-            if arm == self.winner: 
+            if arm == self.winner:
                 self.f[arm] += self.learning_rate * self.context_vector[arm, :]
             else:
                 self.f[arm] += 0
