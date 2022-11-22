@@ -90,37 +90,9 @@ class UCB(Algorithm):
         )
         self.logger.debug(f"    -> Confidence: {self.confidence[self.time_step - 1]}")
 
-        quality_of_arms_explore = self.skill_vector[self.time_step - 1]
-        quality_of_arms_exploit = self.confidence[self.time_step - 1]
+        self.selection = self.get_selection_framework_v2()
 
-        # ToDo: Change parameters of get selection to exclude redundent arms
-        if self.subset_size % 2 == 0:
-            selection_explore = self.get_selection(
-                quality_of_arms=quality_of_arms_explore,
-                subset_size=self.subset_size / 2,
-            )
-            selection_exploit = self.get_selection(
-                quality_of_arms=quality_of_arms_exploit,
-                subset_size=self.subset_size / 2,
-            )
-        else:
-            selection_explore = self.get_selection(
-                quality_of_arms=quality_of_arms_explore,
-                subset_size=(self.subset_size - 1) / 2,
-            )
-            selection_exploit = self.get_selection(
-                quality_of_arms=quality_of_arms_exploit,
-                subset_size=(self.subset_size - 1) / 2,
-            )
-            selection_middle = self.get_selection(
-                quality_of_arms=quality_of_arms_explore + quality_of_arms_exploit,
-                subset_size=1,
-            )
-
-        if selection_explore != selection_exploit != selection_middle:
-            self.selection = np.concatenate(
-                np.concatenate(selection_explore, selection_middle), selection_exploit
-            )
+        
         self.logger.debug(f"    -> Selection: {self.selection}")
 
         self.logger.debug("Starting Duels...")
@@ -136,3 +108,38 @@ class UCB(Algorithm):
         )
         self.update_mean_theta(self.time_step)
         self.compute_regret(selection=self.selection, time_step=self.time_step)
+
+    def get_selection_framework_v2(self):
+        quality_of_arms_explore = self.skill_vector[self.time_step - 1]
+        selection_explore = self.get_selection(
+            quality_of_arms=quality_of_arms_explore,
+            subset_size=self.subset_size,
+        )
+
+        mask = np.zeros(self.num_arms, bool)
+        mask[selection_explore] = True
+        confidence_temp = self.confidence[self.time_step - 1]
+        confidence_temp[mask] = np.nan
+        quality_of_arms_exploit = confidence_temp
+        selection_exploit = self.get_selection(
+            quality_of_arms=quality_of_arms_exploit,
+            subset_size=self.subset_size,
+        )
+
+        # ToDo: Change parameters of get selection to exclude redundent arms
+        if self.subset_size % 2 == 0:
+            selection = np.concatenate(
+                (
+                    selection_explore[0 : int(self.subset_size / 2)],
+                    selection_exploit[0 : int(self.subset_size / 2)],
+                )
+            )
+        else:
+            selection = np.concatenate(
+                (
+                    selection_explore[0 : int((self.subset_size - 1) / 2)],
+                    selection_exploit[0 : int(((self.subset_size - 1) / 2) + 1)],
+                )
+            )
+
+        return selection

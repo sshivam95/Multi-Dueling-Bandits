@@ -8,9 +8,10 @@ from typing import Optional
 
 import numpy as np
 import scipy as sp
+from tqdm import tqdm
+
 from feedback.multi_duel_feedback import MultiDuelFeedback
 from stats.preference_estimate import PreferenceEstimate
-from tqdm import tqdm
 from util import metrics, utility_functions
 from util.constants import JointFeatureMode, Solver
 
@@ -100,9 +101,7 @@ class Algorithm:
         # self.theta_init = self.random_state.rand(
         #     self.context_dimensions
         # )  # Initialize randomly
-        self.theta_init = np.zeros(
-            self.context_dimensions
-        )  # Initialize with zeros
+        self.theta_init = np.zeros(self.context_dimensions)  # Initialize with zeros
         self.theta_hat = copy.copy(
             self.theta_init
         )  # maximum-likelihood estimate of the weight parameter
@@ -162,15 +161,25 @@ class Algorithm:
         end_time = perf_counter()
         self.execution_time = end_time - start_time
         print("Algorithm Finished...")
-   
+
     def get_skill_vector(self, theta, context_vector):
         # compute estimated contextualized utility parameters
-        skill_vector = np.zeros(
-            self.feedback_mechanism.get_num_arms()
-        )
+        skill_vector = np.zeros(self.feedback_mechanism.get_num_arms())
         for arm in range(self.feedback_mechanism.get_num_arms()):
             skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
+
+    def get_selection(self, quality_of_arms, subset_size):
+        """_summary_
+
+        Parameters
+        ----------
+        selection : _type_
+            _description_
+        time_step : _type_
+            _description_
+        """
+        return (-quality_of_arms).argsort()[0 : int(subset_size)]
 
     def get_selection_v2(self, quality_of_arms):
         best_arm = np.array([(quality_of_arms).argmax()])
@@ -202,9 +211,7 @@ class Algorithm:
 
     def get_contrast_skill_vector(self, theta, contrast_vector):
         # compute estimated contextualized utility parameters
-        contrast_skill_vector = np.zeros(
-            self.feedback_mechanism.get_num_arms()
-        )
+        contrast_skill_vector = np.zeros(self.feedback_mechanism.get_num_arms())
         for arm in range(self.feedback_mechanism.get_num_arms()):
             contrast_skill_vector[arm] = np.inner(theta, contrast_vector[arm])
         return contrast_skill_vector
@@ -397,18 +404,6 @@ class Algorithm:
             ]
         )
         return I_hat
-
-    def get_selection(self, quality_of_arms, subset_size):
-        """_summary_
-
-        Parameters
-        ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
-        """
-        return (-quality_of_arms).argsort()[0 : int(subset_size)]
 
     def update_estimated_theta(
         self, selection, time_step, winner, gamma_t: Optional[float] = None

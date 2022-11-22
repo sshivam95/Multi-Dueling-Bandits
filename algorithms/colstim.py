@@ -97,12 +97,13 @@ class Colstim(Algorithm):
             winner=self.winner,
         )
         self.update_trimmed_perturbation_variable()
-        quality_of_arms = (
-            self.skill_vector[self.time_step - 1]
-            + self.trimmed_sampled_perturbation_variable
-            * self.confidence[self.time_step - 1]
-        )
-        self.selection = self.get_selection(quality_of_arms=quality_of_arms)
+        # quality_of_arms = (
+        #     self.skill_vector[self.time_step - 1]
+        #     + self.trimmed_sampled_perturbation_variable
+        #     * self.confidence[self.time_step - 1]
+        # )
+        # self.selection = self.get_selection(quality_of_arms=quality_of_arms)
+        self.selection = self.get_selection_framework_v2()
         self.logger.debug(f"    -> Selection: {self.selection}")
 
         self.logger.debug("Starting Duels...")
@@ -131,6 +132,44 @@ class Colstim(Algorithm):
                 self.threshold_parameter,
                 max(-(self.threshold_parameter), self.perturbation_variable[arm]),
             )
+
+    def get_selection_framework_v2(self):
+        quality_of_arms_explore = self.skill_vector[self.time_step - 1]
+        selection_explore = self.get_selection(
+            quality_of_arms=quality_of_arms_explore,
+            subset_size=self.subset_size,
+        )
+
+        mask = np.zeros(self.num_arms, bool)
+        mask[selection_explore] = True
+        confidence_temp = (
+            self.trimmed_sampled_perturbation_variable
+            * self.confidence[self.time_step - 1]
+        )
+        confidence_temp[mask] = np.nan
+        quality_of_arms_exploit = confidence_temp
+        selection_exploit = self.get_selection(
+            quality_of_arms=quality_of_arms_exploit,
+            subset_size=self.subset_size,
+        )
+
+        # ToDo: Change parameters of get selection to exclude redundent arms
+        if self.subset_size % 2 == 0:
+            selection = np.concatenate(
+                (
+                    selection_explore[0 : int(self.subset_size / 2)],
+                    selection_exploit[0 : int(self.subset_size / 2)],
+                )
+            )
+        else:
+            selection = np.concatenate(
+                (
+                    selection_explore[0 : int((self.subset_size - 1) / 2)],
+                    selection_exploit[0 : int(((self.subset_size - 1) / 2) + 1)],
+                )
+            )
+
+        return selection
 
 
 class Colstim_v2(Colstim):
@@ -217,6 +256,7 @@ class Colstim_v2(Colstim):
         self.logger.debug(f"    -> Selection Winner: {self.winner}")
         self.preference_estimate.enter_sample(winner_arm=self.winner)
         self.compute_regret(selection=self.selection, time_step=self.time_step)
+# TODO: add Framework v2
 
     def get_selection_v2(self, quality_of_arms):
         best_arm = np.array([(quality_of_arms).argmax()])
@@ -237,11 +277,11 @@ class Colstim_v2(Colstim):
             context_vector=contrast_vector,
             winner=self.winner,
         )
-        quality_of_candidates = (
-            self.contrast_skill_vector[self.time_step - 1]
-            + self.confidence_width * self.confidence_width_bound[self.time_step - 1]
-        )
-        candidates = (-quality_of_candidates).argsort()[0 : self.subset_size]
+        # quality_of_candidates = (
+        #     self.contrast_skill_vector[self.time_step - 1]
+        #     + self.confidence_width * self.confidence_width_bound[self.time_step - 1]
+        # )
+        candidates = self.get_selection_framework_v2()
         candidates = np.setdiff1d(candidates, best_arm)
         selection = np.append(best_arm, candidates)
         return selection
@@ -255,3 +295,40 @@ class Colstim_v2(Colstim):
 
     def get_contrast_vector(self, context_vector_i, context_vector_j):
         return (context_vector_i - context_vector_j).reshape(-1)
+
+    def get_selection_framework_v2(self):
+        quality_of_arms_explore = self.contrast_skill_vector[self.time_step - 1]
+        selection_explore = self.get_selection(
+            quality_of_arms=quality_of_arms_explore,
+            subset_size=self.subset_size,
+        )
+
+        mask = np.zeros(self.num_arms, bool)
+        mask[selection_explore] = True
+        confidence_temp = (
+            self.confidence_width * self.confidence_width_bound[self.time_step - 1]
+        )
+        confidence_temp[mask] = np.nan
+        quality_of_arms_exploit = confidence_temp
+        selection_exploit = self.get_selection(
+            quality_of_arms=quality_of_arms_exploit,
+            subset_size=self.subset_size,
+        )
+
+        # ToDo: Change parameters of get selection to exclude redundent arms
+        if self.subset_size % 2 == 0:
+            selection = np.concatenate(
+                (
+                    selection_explore[0 : int(self.subset_size / 2)],
+                    selection_exploit[0 : int(self.subset_size / 2)],
+                )
+            )
+        else:
+            selection = np.concatenate(
+                (
+                    selection_explore[0 : int((self.subset_size - 1) / 2)],
+                    selection_exploit[0 : int(((self.subset_size - 1) / 2) + 1)],
+                )
+            )
+
+        return selection
