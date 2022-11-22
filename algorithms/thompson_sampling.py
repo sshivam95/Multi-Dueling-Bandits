@@ -1,6 +1,8 @@
 import logging
 from typing import Optional
-
+import warnings
+#suppress warnings
+warnings.filterwarnings('ignore')
 import numpy as np
 
 from algorithms import Algorithm
@@ -88,7 +90,7 @@ class ThompsonSamplingContextual(ThompsonSampling):
         running_time: Optional[np.array] = None,
         gaussian_constant: Optional[float] = 1,
         epsilon: Optional[float] = None,
-        failure_probability: Optional[float] = 0.01,
+        failure_probability: Optional[float] = 0.9,
         logger_name="ThompsonSamplingContextual",
         logger_level=logging.INFO,
     ) -> None:

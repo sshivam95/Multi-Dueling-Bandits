@@ -20,7 +20,7 @@ class IndependentSelfSparring(Algorithm):
         context_matrix: Optional[np.array] = None,
         context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
-        learning_rate: float = 0.01,
+        learning_rate: float = 1,
         logger_name="IndependentSelfSparring",
         logger_level=logging.INFO,
     ) -> None:
@@ -82,7 +82,7 @@ class IndependentSelfSparring(Algorithm):
             
         self.compute_regret(selection=self.selection, time_step=self.time_step)
 
-    class IndependentSelfSparringContextual(Algorithm):
+class IndependentSelfSparringContextual(Algorithm):
     def __init__(
         self,
         random_state: Optional[np.random.RandomState] = None,
@@ -95,7 +95,10 @@ class IndependentSelfSparring(Algorithm):
         context_matrix: Optional[np.array] = None,
         context_dimensions: Optional[int] = None,
         running_time: Optional[np.array] = None,
-        learning_rate: float = 0.01,
+        gaussian_constant: Optional[float] = 1,
+        epsilon: Optional[float] = None,
+        failure_probability: Optional[float] = 0.9,
+        learning_rate: float = 1,
         logger_name="IndependentSelfSparringContextual",
         logger_level=logging.INFO,
     ) -> None:
