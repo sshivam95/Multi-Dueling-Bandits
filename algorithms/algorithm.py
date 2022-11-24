@@ -349,7 +349,7 @@ class Algorithm:
         try:
             S_hat_inv = np.linalg.inv(S_hat).astype("float64")
         except np.linalg.LinAlgError as error:
-            S_hat_inv = np.linalg.pinv(S_hat).astype("float64")
+            S_hat_inv = np.abs(np.linalg.pinv(S_hat).astype("float64"))  # To avoid negative values
         sigma_hat = (1 / time_step) * np.dot(np.dot(S_hat_inv, V_hat), S_hat_inv)
         sigma_hat = np.nan_to_num(sigma_hat)
         return sigma_hat
@@ -393,14 +393,19 @@ class Algorithm:
             _description_
         """
         # compute I_hat
-        sigma_hat_sqrt = sp.linalg.sqrtm(sigma_hat)
+        sigma_hat_sqrt = np.sqrt(sigma_hat)
         I_hat = np.array(
             [
                 np.linalg.norm(
-                    np.dot(np.dot(sigma_hat_sqrt, gram_matrix[i]), sigma_hat_sqrt),
+                    np.nan_to_num(
+                        np.dot(
+                            np.nan_to_num(np.dot(sigma_hat_sqrt, gram_matrix[i])),
+                            sigma_hat_sqrt,
+                        )
+                    ),
                     ord=2,
                 )
-                for i in range(self.num_arms)
+                for i in range(20)
             ]
         )
         return I_hat
