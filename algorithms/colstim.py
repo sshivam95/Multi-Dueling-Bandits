@@ -88,7 +88,7 @@ class Colstim(Algorithm):
 
         self.sample_perturbation_variable()
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
-            theta=self.theta_hat, context_vector=context_vector
+            theta=self.theta_bar, context_vector=context_vector
         )
         self.confidence[self.time_step - 1] = self.get_confidence_bounds(
             selection=self.selection,
@@ -231,7 +231,7 @@ class Colstim_v2(Colstim):
             self.update_mean_theta(self.time_step)
         self.sample_perturbation_variable()
         self.skill_vector[self.time_step - 1] = self.get_skill_vector(
-            theta=self.theta_hat, context_vector=self.context_vector
+            theta=self.theta_bar, context_vector=self.context_vector
         )
         self.confidence[self.time_step - 1] = self.get_confidence_bounds(
             selection=self.selection,
@@ -269,7 +269,7 @@ class Colstim_v2(Colstim):
                 context_vector_j=self.context_vector[best_arm, :],
             )
         self.contrast_skill_vector[self.time_step - 1] = self.get_contrast_skill_vector(
-            theta=self.theta_hat, contrast_vector=contrast_vector
+            theta=self.theta_bar, contrast_vector=contrast_vector
         )
         self.confidence_width_bound[self.time_step - 1] = self.get_confidence_bounds(
             selection=self.selection,
