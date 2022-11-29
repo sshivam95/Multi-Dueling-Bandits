@@ -3,7 +3,6 @@ work
 __pycache__
 .vscode/*
 .idea/*
-Job_Scripts/*
 copy_to_pc2_sshivam.sh
 env_setup_pipenv.sh
 Pipfile
@@ -14,3 +13,7 @@ venv/*
 singularity/compile_env.sh
 singularity/pbcppl.def
 debug.py
+Job_Scripts/framework_v2_runs/*
+Job_Scripts/framweork_v2_colstim_v2_theta_bar_runs/*
+Job_Scripts/prev_runs/*
+Job_Scripts/random_init_theta_runs/*
