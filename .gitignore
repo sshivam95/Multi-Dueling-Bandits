@@ -17,3 +17,6 @@ Job_Scripts/framework_v2_runs/*
 Job_Scripts/framweork_v2_colstim_v2_theta_bar_runs/*
 Job_Scripts/prev_runs/*
 Job_Scripts/random_init_theta_runs/*
+**/*.log
+Job_Scripts/*
+hello_world.py
