@@ -188,10 +188,10 @@ class IndependentSelfSparringContextual(Algorithm):
         self.learning_rate = learning_rate
 
         if epsilon is None:
-            epsilon = 1 / np.log(self.time_horizon + 1)
-        self.B = np.ones((self.num_arms, self.context_dimensions))
-        self.mu_hat = np.zeros((self.num_arms, self.context_dimensions))
-        self.f = np.zeros((self.num_arms, self.context_dimensions))
+            epsilon = 1/ np.log(self.time_horizon + 1)
+        self.B = np.ones((self.context_dimensions, self.context_dimensions))
+        self.mu_hat = np.zeros((self.context_dimensions, self.context_dimensions))
+        self.f = np.zeros((self.context_dimensions, self.context_dimensions))
         self.v = gaussian_constant * np.sqrt(
             np.divide(24, epsilon)
             * self.context_dimensions
@@ -200,13 +200,18 @@ class IndependentSelfSparringContextual(Algorithm):
         self.context_vector = None
 
     def step(self) -> None:
-        standard_deviation = np.divide(self.v ** 2, self.B)
+        try:
+            self.B_inv = np.linalg.inv(self.B).astype("float64")
+        except np.linalg.LinAlgError as error:
+            self.B_inv = np.linalg.pinv(self.B).astype("float64")
+
+        standard_deviation = np.inner(self.v**2, self.B_inv)
         self.context_vector = self.context_matrix[self.time_step - 1]
         theta = self.random_state.normal(self.mu_hat, standard_deviation)
         skill_vector = np.zeros(self.num_arms)
         for arm in range(self.num_arms):
             skill_vector[arm] = np.exp(np.inner(theta[arm, :], self.context_vector[arm, :]))
-
+        
         self.skill_vector[self.time_step - 1] = skill_vector
 
         self.selection = self.get_selection(
@@ -219,9 +224,9 @@ class IndependentSelfSparringContextual(Algorithm):
 
         self.compute_regret(selection=self.selection, time_step=self.time_step)
         for arm in self.selection:
-            self.B[arm] += self.learning_rate * np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
+            self.B += self.learning_rate * np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
             if arm == self.winner:
-                self.f[arm] += self.learning_rate * self.context_vector[arm, :]
+                self.f += self.learning_rate * self.context_vector[arm, :]
             else:
-                self.f[arm] += 0
-            self.mu_hat[arm] = np.divide(self.f[arm], self.B[arm])
+                self.f += 0
+        self.mu_hat = np.inner(self.B_inv, self.f)
