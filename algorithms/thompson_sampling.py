@@ -174,9 +174,9 @@ class ThompsonSamplingContextual(ThompsonSampling):
         
         if epsilon is None:
             epsilon = 1/ np.log(self.time_horizon + 1)
-        self.B = np.ones((self.num_arms, self.context_dimensions))
-        self.mu_hat = np.zeros((self.num_arms, self.context_dimensions))
-        self.f = np.zeros((self.num_arms, self.context_dimensions))
+        self.B = np.ones((self.context_dimensions, self.context_dimensions))
+        self.mu_hat = np.zeros((self.context_dimensions, self.context_dimensions))
+        self.f = np.zeros((self.context_dimensions, self.context_dimensions))
         self.v = gaussian_constant * np.sqrt(
             np.divide(24, epsilon)
             * self.context_dimensions
@@ -185,7 +185,12 @@ class ThompsonSamplingContextual(ThompsonSampling):
         self.context_vector = None
 
     def step(self):
-        standard_deviation = np.divide(self.v**2, self.B)
+        try:
+            self.B_inv = np.linalg.inv(self.B).astype("float64")
+        except np.linalg.LinAlgError as error:
+            self.B_inv = np.abs(np.linalg.pinv(self.B).astype("float64"))
+
+        standard_deviation = np.inner(self.v**2, self.B_inv)
         self.context_vector = self.context_matrix[self.time_step - 1]
         theta = self.random_state.normal(self.mu_hat, standard_deviation)
         skill_vector = np.zeros(self.num_arms)
@@ -205,10 +210,10 @@ class ThompsonSamplingContextual(ThompsonSampling):
     
     def update(self):
         for arm in self.selection:
-            self.B[arm] += np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
+            self.B += np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
             if arm == self.winner: 
-                self.f[arm] += self.context_vector[arm, :]
+                self.f += self.context_vector[arm, :]
             else:
-                self.f[arm] += 0
-            self.mu_hat[arm] = np.divide(self.f[arm], self.B[arm])
+                self.f += 0
+        self.mu_hat = np.inner(self.B_inv, self.f)
             
