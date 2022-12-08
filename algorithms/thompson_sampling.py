@@ -192,7 +192,7 @@ class ThompsonSamplingContextual(ThompsonSampling):
 
         standard_deviation = np.inner(self.v**2, self.B_inv)
         self.context_vector = self.context_matrix[self.time_step - 1]
-        theta = self.random_state.normal(self.mu_hat, standard_deviation)
+        theta = self.random_state.normal(self.mu_hat, np.abs(standard_deviation))
         skill_vector = np.zeros(self.num_arms)
         for arm in range(self.num_arms):
             skill_vector[arm] = np.exp(np.inner(theta[arm, :], self.context_vector[arm, :]))
@@ -215,5 +215,9 @@ class ThompsonSamplingContextual(ThompsonSampling):
                 self.f += self.context_vector[arm, :]
             else:
                 self.f += 0
+        try:
+            self.B_inv = np.linalg.inv(self.B).astype("float64")
+        except np.linalg.LinAlgError as error:
+            self.B_inv = np.linalg.pinv(self.B).astype("float64")
         self.mu_hat = np.inner(self.B_inv, self.f)
             
