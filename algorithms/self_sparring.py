@@ -47,7 +47,8 @@ class IndependentSelfSparring(Algorithm):
     def step(self) -> None:
         context_vector = self.context_matrix[self.time_step - 1]
         self.theta_hat = np.zeros((self.num_arms, self.context_dimensions))
-        pairwise_feedback_matrix = np.zeros((self.subset_size, self.subset_size))
+        pairwise_feedback_matrix = np.empty((self.subset_size, self.subset_size))
+        pairwise_feedback_matrix.fill(np.nan)
         # -----------------WITH CONTEXT----------------
         for i in range(self.num_arms):
             self.theta_hat[i] = self.random_state.beta(
@@ -68,7 +69,7 @@ class IndependentSelfSparring(Algorithm):
                 if j == self.winner:
                     pairwise_feedback_matrix[index_j][index_k] = 1
                 if j == k:
-                    pairwise_feedback_matrix[index_j][index_k] = np.nan
+                    pairwise_feedback_matrix[index_j][index_k] = 0
 
         for index_j, j in enumerate(self.selection):
             for index_k, k in enumerate(self.selection):
@@ -118,7 +119,8 @@ class IndependentSelfSparring_v2(Algorithm):
     def step(self) -> None:
         context_vector = self.context_matrix[self.time_step - 1]
         self.theta_hat = np.zeros((self.num_arms, self.context_dimensions))
-        pairwise_feedback_matrix = np.zeros((self.subset_size, self.subset_size))
+        pairwise_feedback_matrix = np.empty((self.subset_size, self.subset_size))
+        pairwise_feedback_matrix.fill(np.nan)
         # -----------------WITH CONTEXT----------------
         for i in range(self.num_arms):
             self.theta_hat[i] = self.random_state.beta(
@@ -139,7 +141,7 @@ class IndependentSelfSparring_v2(Algorithm):
                 if j == self.winner:
                     pairwise_feedback_matrix[index_j][index_k] = 1
                 if j == k:
-                    pairwise_feedback_matrix[index_j][index_k] = np.nan
+                    pairwise_feedback_matrix[index_j][index_k] = 0
 
         for index_j, j in enumerate(self.selection):
             for index_k, k in enumerate(self.selection):
@@ -204,7 +206,8 @@ class IndependentSelfSparringContextual(Algorithm):
             self.B_inv = np.linalg.inv(self.B).astype("float64")
         except np.linalg.LinAlgError as error:
             self.B_inv = np.abs(np.linalg.pinv(self.B).astype("float64"))
-
+        pairwise_feedback_matrix = np.empty((self.subset_size, self.subset_size))
+        pairwise_feedback_matrix.fill(np.nan)
         standard_deviation = np.inner(self.v**2, self.B_inv)
         self.context_vector = self.context_matrix[self.time_step - 1]
         theta = self.random_state.normal(self.mu_hat, standard_deviation)
@@ -222,11 +225,17 @@ class IndependentSelfSparringContextual(Algorithm):
         )
         self.preference_estimate.enter_sample(winner_arm=self.winner)
 
-        self.compute_regret(selection=self.selection, time_step=self.time_step)
+        for index_j, j in enumerate(self.selection):
+            for index_k, k in enumerate(self.selection):
+                if j == self.winner:
+                    pairwise_feedback_matrix[index_j][index_k] = 1
+                if j == k:
+                    pairwise_feedback_matrix[index_j][index_k] = 0
+                    
         for arm in self.selection:
             self.B += self.learning_rate * np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
             if arm == self.winner:
-                self.f += self.learning_rate * self.context_vector[arm, :]
+                self.f += self.learning_rate * self.context_vector[arm, :] * pairwise_feedback_matrix[arm, :]
             else:
                 self.f += 0
         try:
@@ -234,3 +243,5 @@ class IndependentSelfSparringContextual(Algorithm):
         except np.linalg.LinAlgError as error:
             self.B_inv = np.linalg.pinv(self.B).astype("float64")
         self.mu_hat = np.inner(self.B_inv, self.f)
+        
+        self.compute_regret(selection=self.selection, time_step=self.time_step)
