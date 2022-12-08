@@ -203,7 +203,7 @@ class IndependentSelfSparringContextual(Algorithm):
         try:
             self.B_inv = np.linalg.inv(self.B).astype("float64")
         except np.linalg.LinAlgError as error:
-            self.B_inv = np.linalg.pinv(self.B).astype("float64")
+            self.B_inv = np.abs(np.linalg.pinv(self.B).astype("float64"))
 
         standard_deviation = np.inner(self.v**2, self.B_inv)
         self.context_vector = self.context_matrix[self.time_step - 1]
@@ -229,4 +229,8 @@ class IndependentSelfSparringContextual(Algorithm):
                 self.f += self.learning_rate * self.context_vector[arm, :]
             else:
                 self.f += 0
+        try:
+            self.B_inv = np.linalg.inv(self.B).astype("float64")
+        except np.linalg.LinAlgError as error:
+            self.B_inv = np.linalg.pinv(self.B).astype("float64")
         self.mu_hat = np.inner(self.B_inv, self.f)
