@@ -20,3 +20,4 @@ Job_Scripts/random_init_theta_runs/*
 **/*.log
 Job_Scripts/*
 hello_world.py
+debug.py
