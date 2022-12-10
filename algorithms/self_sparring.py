@@ -232,10 +232,10 @@ class IndependentSelfSparringContextual(Algorithm):
                 if j == k:
                     pairwise_feedback_matrix[index_j][index_k] = 0
                     
-        for arm in self.selection:
+        for arm_index, arm in enumerate(self.selection):
             self.B += self.learning_rate * np.inner(self.context_vector[arm, :], self.context_vector[arm, :])
             if arm == self.winner:
-                self.f += self.learning_rate * self.context_vector[arm, :] * pairwise_feedback_matrix[arm, :]
+                self.f += self.learning_rate * self.context_vector[arm, :] * np.max(pairwise_feedback_matrix[arm_index, :])
             else:
                 self.f += 0
         try:
