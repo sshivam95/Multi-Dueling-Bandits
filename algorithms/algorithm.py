@@ -57,7 +57,7 @@ class Algorithm:
             self.running_time = running_time
 
         self.num_arms = self.parametrizations.shape[0]
-        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
+        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms, random_state=self.random_state)
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")

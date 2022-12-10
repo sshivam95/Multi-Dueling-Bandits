@@ -188,7 +188,7 @@ class ThompsonSamplingContextual(ThompsonSampling):
         try:
             self.B_inv = np.linalg.inv(self.B).astype("float64")
         except np.linalg.LinAlgError as error:
-            self.B_inv = np.linalg.pinv(self.B).astype("float64")
+            self.B_inv = np.abs(np.linalg.pinv(self.B).astype("float64"))
 
         standard_deviation = np.inner(self.v**2, self.B_inv)
         self.context_vector = self.context_matrix[self.time_step - 1]

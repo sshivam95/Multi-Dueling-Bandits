@@ -155,8 +155,8 @@ def get_run_times_saps():
         next_rt_vector = [float(s) for s in re.findall(r"-?\d+\.?\d*", next_line)][2:]
         running_times.append(next_rt_vector)
     running_times = np.asarray(running_times)
-    lambda_ = 10
-    running_times = np.exp(-lambda_ * running_times)
+    # lambda_ = 10
+    # running_times = np.exp(-lambda_ * running_times)
     return running_times
 
 
@@ -204,8 +204,8 @@ def get_run_times_mips():
     )
     running_times = pd.read_csv(running_times_file, delimiter="\t")
     running_times = running_times.iloc[:, 1:].to_numpy(dtype=float)
-    lambda_ = 10
-    running_times = np.exp(-lambda_ * running_times)
+    # lambda_ = 10
+    # running_times = np.exp(-lambda_ * running_times)
     return running_times
 
 
