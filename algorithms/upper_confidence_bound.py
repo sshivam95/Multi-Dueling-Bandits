@@ -70,7 +70,6 @@ class UCB(Algorithm):
         )
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
-        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
 
     def step(self):
         self.logger.debug(f"    -> Time Step: {self.time_step}")
