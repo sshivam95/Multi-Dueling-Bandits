@@ -55,8 +55,10 @@ class ThompsonSampling(Algorithm):
             self.theta_hat[i] = self.random_state.beta(
                 wins[i] + 1, losses[i] + 1, size=self.context_dimensions
             )
-        self.theta_hat = np.mean(self.theta_hat, axis=0)
-        self.skill_vector[self.time_step - 1] = np.exp(np.inner(context_vector, self.theta_hat))
+        # self.theta_hat = np.mean(self.theta_hat, axis=0)
+        # self.skill_vector[self.time_step - 1] = np.exp(np.inner(context_vector, self.theta_hat))
+        for i in range(self.num_arms):
+            self.skill_vector[self.time_step - 1][i] = np.exp(np.inner(context_vector[i], self.theta_hat[i]))
 
         # # -----------------WITHOUT CONTEXT----------------
         # self.skill_vector[self.time_step - 1] = np.exp(
