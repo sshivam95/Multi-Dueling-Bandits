@@ -40,6 +40,13 @@ def _main():
         choices=algorithm_names_to_algorithms.keys(),
     )
     parser.add_argument(
+        "--arms",
+        dest="num_arms",
+        default=20,
+        type=int,
+        help="How many arms the generated preference matrices should contain. (default: 20)",
+    )
+    parser.add_argument(
         "--reps",
         dest="reps",
         default=10,
@@ -89,8 +96,10 @@ def _main():
 
     solver = args.solver
     subset_size = args.subset_size
+    num_arms = args.num_arms
     run_experiment(
         algorithms=algorithms,
+        num_arms=num_arms,
         reps=args.reps,
         n_jobs=args.n_jobs,
         joint_featured_map_mode=args.joint_featured_map_mode,
@@ -102,6 +111,7 @@ def _main():
 
 def run_experiment(
     algorithms,
+    num_arms,
     reps,
     n_jobs,
     joint_featured_map_mode,
@@ -138,6 +148,10 @@ def run_experiment(
         joint_feature_map_mode=joint_featured_map_mode,
         context_feature_dimensions=context_dimensions,
     )
+    
+    parametrizations = parametrizations[:num_arms, :]
+    running_time = running_time[:, :num_arms]
+    context_matrix = context_matrix[:, :num_arms, :]
     regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
 
