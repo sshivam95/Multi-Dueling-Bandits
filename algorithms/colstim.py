@@ -134,22 +134,22 @@ class Colstim(Algorithm):
             )
 
     def get_selection_framework_v2(self):
-        quality_of_arms_explore = self.skill_vector[self.time_step - 1]
-        selection_explore = self.get_selection(
-            quality_of_arms=quality_of_arms_explore,
+        quality_of_arms_exploit = self.skill_vector[self.time_step - 1]
+        selection_exploit = self.get_selection(
+            quality_of_arms=quality_of_arms_exploit,
             subset_size=self.subset_size,
         )
 
         mask = np.zeros(self.num_arms, bool)
-        mask[selection_explore] = True
+        mask[selection_exploit] = True
         confidence_temp = (
             self.trimmed_sampled_perturbation_variable
             * self.confidence[self.time_step - 1]
         )
         confidence_temp[mask] = np.nan
-        quality_of_arms_exploit = confidence_temp
-        selection_exploit = self.get_selection(
-            quality_of_arms=quality_of_arms_exploit,
+        quality_of_arms_explore = confidence_temp
+        selection_explore = self.get_selection(
+            quality_of_arms=quality_of_arms_explore,
             subset_size=self.subset_size,
         )
 
@@ -256,7 +256,6 @@ class Colstim_v2(Colstim):
         self.logger.debug(f"    -> Selection Winner: {self.winner}")
         self.preference_estimate.enter_sample(winner_arm=self.winner)
         self.compute_regret(selection=self.selection, time_step=self.time_step)
-# TODO: add Framework v2
 
     def get_selection_v2(self, quality_of_arms):
         best_arm = np.array([(quality_of_arms).argmax()])
@@ -297,21 +296,21 @@ class Colstim_v2(Colstim):
         return (context_vector_i - context_vector_j).reshape(-1)
 
     def get_selection_framework_v2(self):
-        quality_of_arms_explore = self.contrast_skill_vector[self.time_step - 1]
-        selection_explore = self.get_selection(
-            quality_of_arms=quality_of_arms_explore,
+        quality_of_arms_exploit = self.contrast_skill_vector[self.time_step - 1]
+        selection_exploit = self.get_selection(
+            quality_of_arms=quality_of_arms_exploit,
             subset_size=self.subset_size,
         )
 
         mask = np.zeros(self.num_arms, bool)
-        mask[selection_explore] = True
+        mask[selection_exploit] = True
         confidence_temp = (
             self.confidence_width * self.confidence_width_bound[self.time_step - 1]
         )
         confidence_temp[mask] = np.nan
-        quality_of_arms_exploit = confidence_temp
-        selection_exploit = self.get_selection(
-            quality_of_arms=quality_of_arms_exploit,
+        quality_of_arms_explore = confidence_temp
+        selection_explore = self.get_selection(
+            quality_of_arms=quality_of_arms_explore,
             subset_size=self.subset_size,
         )
 

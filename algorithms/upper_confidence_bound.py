@@ -110,19 +110,19 @@ class UCB(Algorithm):
         self.compute_regret(selection=self.selection, time_step=self.time_step)
 
     def get_selection_framework_v2(self):
-        quality_of_arms_explore = self.skill_vector[self.time_step - 1]
-        selection_explore = self.get_selection(
-            quality_of_arms=quality_of_arms_explore,
+        quality_of_arms_exploit = self.skill_vector[self.time_step - 1]
+        selection_exploit = self.get_selection(
+            quality_of_arms=quality_of_arms_exploit,
             subset_size=self.subset_size,
         )
 
         mask = np.zeros(self.num_arms, bool)
-        mask[selection_explore] = True
+        mask[selection_exploit] = True
         confidence_temp = self.confidence[self.time_step - 1]
         confidence_temp[mask] = np.nan
-        quality_of_arms_exploit = confidence_temp
-        selection_exploit = self.get_selection(
-            quality_of_arms=quality_of_arms_exploit,
+        quality_of_arms_explore = confidence_temp
+        selection_explore = self.get_selection(
+            quality_of_arms=quality_of_arms_explore,
             subset_size=self.subset_size,
         )
 
