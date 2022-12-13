@@ -405,7 +405,7 @@ class Algorithm:
                     ),
                     ord=2,
                 )
-                for i in range(20)
+                for i in range(self.num_arms)
             ]
         )
         return I_hat
