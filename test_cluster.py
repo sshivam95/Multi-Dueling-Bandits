@@ -155,6 +155,7 @@ def run_experiment(
     regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
 
+    print(f"\nN = {num_arms}")
     def job_producer() -> Generator:
         for algorithm_class in algorithms:
             algorithm_name = algorithm_class.__name__
