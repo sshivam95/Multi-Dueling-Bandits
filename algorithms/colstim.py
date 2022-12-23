@@ -6,7 +6,6 @@ import numpy as np
 from tqdm import tqdm
 
 from algorithms.algorithm import Algorithm
-from feedback.multi_duel_feedback import MultiDuelFeedback
 from util.constants import JointFeatureMode, Solver
 
 

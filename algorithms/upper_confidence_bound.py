@@ -1,11 +1,9 @@
 import logging
-import multiprocessing
 from typing import Optional
 
 import numpy as np
 
 from algorithms.algorithm import Algorithm
-from feedback.multi_duel_feedback import MultiDuelFeedback
 from util.constants import JointFeatureMode, Solver
 
 
@@ -70,7 +68,6 @@ class UCB(Algorithm):
         )
         self.logger = logging.getLogger(logger_name)
         self.logger.setLevel(logger_level)
-        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms)
 
     def step(self):
         self.logger.debug(f"    -> Time Step: {self.time_step}")
