@@ -258,9 +258,7 @@ class Colstim_v2(Colstim):
 
     def get_selection_v2(self, quality_of_arms):
         best_arm = np.array([(quality_of_arms).argmax()])
-        contrast_vector = np.empty(
-            self.feedback_mechanism.get_num_arms(), dtype=np.ndarray
-        )
+        contrast_vector = np.zeros((self.num_arms, self.context_dimensions))
         for arm in self.feedback_mechanism.get_arms():
             contrast_vector[arm] = self.get_contrast_vector(
                 context_vector_i=self.context_vector[arm, :],
