@@ -1,4 +1,4 @@
-"""A generic superclass which contains the common functions required in the implemented PB-MAB algorithms."""
+"""A generic superclass which contains the common functionality required in the implemented arm selection strategy algorithms."""
 
 import copy
 import logging
@@ -7,7 +7,6 @@ from time import perf_counter
 from typing import Optional
 
 import numpy as np
-import scipy as sp
 from tqdm import tqdm
 
 from feedback.multi_duel_feedback import MultiDuelFeedback
@@ -17,7 +16,82 @@ from util.constants import JointFeatureMode, Solver
 
 
 class Algorithm:
-    r"""Parent class of all the implemented PB-MAB algorithms."""
+    """Parent class of all the implemented arm selection strategy algorithms.
+
+    When implementing any new arm strategy algorithm, inherit this parent class to mimic the basic functionality of the CPPL framework.
+    The basic functionalities include:
+        a. Extracting the instance features, parameter features and running times if not given by the user for SAPS and CPLEX solver dataset used in this work.
+        b. Initializing all the variables used in the CPPL framework and those common in the arm selection strategy algorithms.
+        c. Calculating and updating the regret of an algorithm.
+        d. Initializing a general arm selection method.
+        e. Calculating the confidence bounds used by some of the different arm selection algorithms.
+
+    Parameters
+    ----------
+    random_state: np.random.RandomState, optional
+        A numpy random state. Defaults to an unseeded state when not specified.
+    joint_featured_map_mode: str, optional
+        The feature map mode used on the instance features and parameter features by the CPPL for generating the context matrix, by default `polynomial`.
+    solver: str, optional
+        The solver used by the CPPL to solve the probem instances, by defaults `saps`.
+    omega: float, optional
+        The hyperparameter used by the UCB strategy, by defualt None.
+    subset_size: int, optional
+        The size `k` from the literature representing the number of arms to select as a subset from the pool of arms, by defualt multiprocessing.cpu_count(), i.e., the number of CPU cores in the machine.
+    parametrizations: np.array, optional
+        The parameters of the solver, by default None.
+    features: np.array, optional
+        The features of the problem instances to be solved by the solver, by default None.
+    context_matrix: np.array, optional
+        The context matrix of all the problem instances and all the arms. Usually this is constructed by the `utility_functions`, by default None.
+    context_dimensions: int, optional
+        The contextual dimensions of the context vector based on the joint feature map mode, by default None.
+    running_time: np.array, optional
+        The execution times of each parameter sequence, or arms, runned on the instance problems by the solver, by default None.
+
+    Attributes
+    ----------
+    num_arms
+        The total number of arms running in the experiments. Usually this number is equal to the combination of the solver's parameterizations.
+    feedback_mechanism
+        A `FeedbackMechanism` object describing the environment. This parameter has been taken from the parent class.
+    time_horizon
+        This is usually the total number of the problem instances given to the CPPL.
+    context_dimensions
+        The dimension of the context vector of a single arm for a single problem instance. This quantity is determined by the joint feature mode given by the user.
+    theta_init
+        The initial weight parameter vector for the context vector. Initially, they are randomly initialized (as per the CPPL algorithm) and have a shape of (context_dimensions, 1).
+    theta_hat
+        The maximum-likelihood estimate of the weight parameter. Initially, it is equal to the `theta_init`.
+    theta_bar
+        The weight parameter used by the Polyak-Ruppert averaged Stochastic Gradient Descent (SGD) method used in the CPPL framework for certain arm strategies (eg. UCB, Colstim, and Colstim_v2). Initially equal to `theta_hat`.
+    regret
+        The regret measurement vector of shape (time_horizon, 1) for each problem instance.
+    skill_vector
+        A "matrix" of size (time_horizon, num_arms) where each row contains a vector of scalars based on the Plackett-Luce model.
+        Each scalar is the dot product of the context vector and the maximum-likelihood estimate of the weight parameter for each arm.
+    confidence
+        A "matrix" of size (time_horizon, num_arms) where each row contains a vector of scalars.
+        Each scalar is the confidence bound for each arm of a problem instance.
+    gamma
+        A hyperparameter of the Polyak-Ruppert averaged SGD method.
+    alpha
+        A hyperparameter of the Polyak-Ruppert averaged SGD method.
+    grad_op_sum
+        The quantity to measure V_hat on page 7 in the paper https://arxiv.org/pdf/2002.04275.pdf
+    hessian_sum
+        The quantity to measure S_hat on page 7 in the paper https://arxiv.org/pdf/2002.04275.pdf
+    preference_estimate
+        A `PreferenceEstimate` object for entering the samples of the estimates.
+    time_step
+        The current time step.
+    selection 
+        The subset selection of size `subset_size` from the arms. Start with random selection.
+    winner
+        The winner arm in the subset selection.
+    execution_time
+        A variable to track the execution period of the arm strategy algorithm.
+    """
 
     def __init__(
         self,
@@ -42,6 +116,7 @@ class Algorithm:
             random_state if random_state is not None else np.random.RandomState()
         )
 
+        # Extract the features, parameterizations and run times if not already provided based on the solver used.
         if features is None and parametrizations is None and running_time is None:
             if solver == Solver.SAPS.value:
                 self.parametrizations = utility_functions.get_parameterization_saps()
@@ -56,8 +131,13 @@ class Algorithm:
             self.features = features
             self.running_time = running_time
 
+        # The number of arms is equal to the number of parameterization sequences.
         self.num_arms = self.parametrizations.shape[0]
-        self.feedback_mechanism = MultiDuelFeedback(num_arms=self.num_arms, random_state=self.random_state)
+
+        # Initialize a feedback mechanism for the arm staretegy which determines which
+        self.feedback_mechanism = MultiDuelFeedback(
+            num_arms=self.num_arms, random_state=self.random_state
+        )
         self.logger.debug(f"    -> Num arms: {self.num_arms}")
         self.time_horizon = self.features.shape[0]
         self.logger.debug(f"    -> Time Horizon: {self.time_horizon}")
@@ -98,21 +178,21 @@ class Algorithm:
         else:
             self.context_matrix = context_matrix
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
+        
+        # Initialize randomly
         self.theta_init = self.random_state.rand(
             self.context_dimensions
-        )  # Initialize randomly
-        # self.theta_init = np.zeros(
-        #     self.context_dimensions
-        # )  # Initialize with zeros
+        )
+        
+        # maximum-likelihood estimate of the weight parameter 
         self.theta_hat = copy.copy(
             self.theta_init
-        )  # maximum-likelihood estimate of the weight parameter
+        )
         self.theta_bar = copy.copy(self.theta_hat)
         self.regret = np.zeros(self.time_horizon)
-        self.regret_preselection = np.zeros(self.time_horizon)
         if not omega:
             self.omega = (
-                1  # np.sqrt(self.context_dimensions * np.log(self.time_horizon)) / 100
+                1
             )
         self.skill_vector = np.zeros((self.time_horizon, self.num_arms))
         self.confidence = np.zeros((self.time_horizon, self.num_arms))
@@ -124,7 +204,7 @@ class Algorithm:
         self.time_step = 0
         self.selection = self.random_state.choice(
             self.num_arms, self.subset_size, replace=False
-        )  # start with random selection
+        ) 
         self.winner = None
         self.execution_time = 0
 
@@ -135,21 +215,8 @@ class Algorithm:
         multiple comparisons. What exactly a "logical step" is depends on the
         algorithm.
 
-        The feedback mechanism is wrapped with a ``BudgetedFeedbackMechanism``
-        therefore conducting duels within a step may raise an exception if a
-        time horizon is specified.
-
         If you want to run an algorithm you should use the ``run`` function
         instead.
-
-        Raises
-        ------
-        TimeBudgetExceededException
-            If the step has been terminated early due to the time horizon. The
-            exception class is local to the object. Different instances raise
-            different exceptions. The exception class for this algorithm can be
-            accessed through the ``exception_class`` attribute of the wrapped
-            feedback mechanism.
         """
         raise NotImplementedError
 
@@ -171,43 +238,43 @@ class Algorithm:
             skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
         return skill_vector
 
-    def get_selection_v2(self, quality_of_arms):
-        best_arm = np.array([(quality_of_arms).argmax()])
-        contrast_vector = np.empty(
-            self.feedback_mechanism.get_num_arms(), dtype=np.ndarray
-        )
-        for arm in self.feedback_mechanism.get_arms():
-            contrast_vector[arm] = self.get_contrast_vector(
-                context_vector_i=self.context_vector[arm, :],
-                context_vector_j=self.context_vector[best_arm, :],
-            )
-        self.contrast_skill_vector[self.time_step - 1] = self.get_contrast_skill_vector(
-            theta=self.theta_hat, contrast_vector=contrast_vector
-        )
-        self.confidence_width_bound[self.time_step - 1] = self.get_confidence_bounds(
-            selection=self.selection,
-            time_step=self.time_step,
-            context_vector=contrast_vector,
-            winner=self.winner,
-        )
-        quality_of_candidates = (
-            self.contrast_skill_vector[self.time_step - 1]
-            + self.confidence_width * self.confidence_width_bound[self.time_step - 1]
-        )
-        candidates = (-quality_of_candidates).argsort()[0 : self.subset_size]
-        candidates = np.setdiff1d(candidates, best_arm)
-        selection = np.append(best_arm, candidates)
-        return selection
+    # def get_selection_v2(self, quality_of_arms):
+    #     best_arm = np.array([(quality_of_arms).argmax()])
+    #     contrast_vector = np.empty(
+    #         self.feedback_mechanism.get_num_arms(), dtype=np.ndarray
+    #     )
+    #     for arm in self.feedback_mechanism.get_arms():
+    #         contrast_vector[arm] = self.get_contrast_vector(
+    #             context_vector_i=self.context_vector[arm, :],
+    #             context_vector_j=self.context_vector[best_arm, :],
+    #         )
+    #     self.contrast_skill_vector[self.time_step - 1] = self.get_contrast_skill_vector(
+    #         theta=self.theta_hat, contrast_vector=contrast_vector
+    #     )
+    #     self.confidence_width_bound[self.time_step - 1] = self.get_confidence_bounds(
+    #         selection=self.selection,
+    #         time_step=self.time_step,
+    #         context_vector=contrast_vector,
+    #         winner=self.winner,
+    #     )
+    #     quality_of_candidates = (
+    #         self.contrast_skill_vector[self.time_step - 1]
+    #         + self.confidence_width * self.confidence_width_bound[self.time_step - 1]
+    #     )
+    #     candidates = (-quality_of_candidates).argsort()[0 : self.subset_size]
+    #     candidates = np.setdiff1d(candidates, best_arm)
+    #     selection = np.append(best_arm, candidates)
+    #     return selection
 
-    def get_contrast_skill_vector(self, theta, contrast_vector):
-        # compute estimated contextualized utility parameters
-        contrast_skill_vector = np.zeros(self.feedback_mechanism.get_num_arms())
-        for arm in range(self.feedback_mechanism.get_num_arms()):
-            contrast_skill_vector[arm] = np.inner(theta, contrast_vector[arm])
-        return contrast_skill_vector
+    # def get_contrast_skill_vector(self, theta, contrast_vector):
+    #     # compute estimated contextualized utility parameters
+    #     contrast_skill_vector = np.zeros(self.feedback_mechanism.get_num_arms())
+    #     for arm in range(self.feedback_mechanism.get_num_arms()):
+    #         contrast_skill_vector[arm] = np.inner(theta, contrast_vector[arm])
+    #     return contrast_skill_vector
 
-    def get_contrast_vector(self, context_vector_i, context_vector_j):
-        return (context_vector_i - context_vector_j).reshape(-1)
+    # def get_contrast_vector(self, context_vector_i, context_vector_j):
+    #     return (context_vector_i - context_vector_j).reshape(-1)
 
     def get_confidence_bounds(
         self, selection, time_step, context_vector, winner: Optional[int] = None
