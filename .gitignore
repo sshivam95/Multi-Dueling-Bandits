@@ -3,7 +3,6 @@ work
 __pycache__
 .vscode/*
 .idea/*
-Job_Scripts/*
 copy_to_pc2_sshivam.sh
 env_setup_pipenv.sh
 Pipfile
