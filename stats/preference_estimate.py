@@ -1,4 +1,4 @@
-"""Utilities for estimating preference matrices based on samples."""
+"""Utilities for estimating preferences based on samples."""
 
 from typing import Union
 
@@ -7,12 +7,12 @@ import numpy as np
 
 
 class PreferenceEstimate:
-    """An estimation of a preference matrix based on samples.
+    """An estimation of the preferences based on samples.
 
     Parameters
     ----------
     num_arms
-        The number of arms in the estimated preference matrix.
+        The total number of arms.
     """
 
     def __init__(
