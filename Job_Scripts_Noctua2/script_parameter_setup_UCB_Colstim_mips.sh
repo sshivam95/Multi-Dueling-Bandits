@@ -1,7 +1,7 @@
-declare -a num_arms=("20")
+declare -a num_arms=("15" "20")
 declare -a algorithm_classes=("UCB" "Colstim")
 declare -a solver_array=("mips")
-declare -a subset_size=("16")
+declare -a subset_size=("2" "3" "4" "5" "6" "7" "8" "9" "10")
 
 for arms in "${num_arms[@]}";
 do

@@ -1,4 +1,4 @@
-declare -a num_arms=("15")
+declare -a num_arms=("15" "20")
 declare -a algorithm_classes=("ThompsonSampling" "ThompsonSamplingContextual" "IndependentSelfSparring" "IndependentSelfSparringContextual")
 declare -a solver_array=("saps" "mips")
 declare -a subset_size=("2" "3" "4" "5" "6" "7" "8" "9" "10")
