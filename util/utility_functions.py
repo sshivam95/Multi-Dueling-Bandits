@@ -50,102 +50,21 @@ def argmin_set(
     return np.array(result)
 
 
-def argmax_set(
-    array: np.array, exclude_indexes: Optional[List[int]] = None
-) -> List[int]:
-    """Calculate the complete argmax set, returning an array with all indices..
-
-    It removes the ``exclude_indexes`` from the  array and calculates the indices set with maximum value from the remaining
-    indexes of array.
-
-    Parameters
-    ----------
-    array
-        The 1-D array for which the argmax should be calculated
-    exclude_indexes
-        Indices to exclude in the argmax operation.
+def get_run_times_saps() -> np.ndarray:
+    """Extract the run times of the SAPS solver.
 
     Returns
     -------
-    indices
-        A 1-D array containing all indices which point to the maximum value.
+    np.ndarray
+        The run times of all the parameterizations on all the problem instances in the dataset. The shape of this matrix is (time_horizon, num_arms)
     """
-    # np.argmax only returns the first index, to get the whole set,
-    # we first find the maximum and then search for all indices which point
-    # to a value equal to this maximum
-    max_value = 0
-    result: List[int] = []
-    for idx, item in enumerate(array):
-        if exclude_indexes is not None and idx in exclude_indexes:
-            continue
-        if not np.ma.getmaskarray(array)[idx] and (
-            len(result) == 0 or item > max_value
-        ):
-            max_value = item
-            result = [idx]
-        elif item == max_value:
-            result.append(idx)
-    return np.array(result)
-
-
-def pop_random(
-    input_list: List[int], random_state: np.random.RandomState, amount: int = 1
-) -> List[int]:
-    """Remove randomly chosen elements from a given list and return them.
-
-    If the list contains less than or exactly ``amount`` elements, all elements are chosen.
-
-    Parameters
-    ----------
-    input_list
-        The list from which an arm should be removed.
-    random_state
-        The random state to use.
-    amount
-        The number of elements to pick, defaults to ``1``.
-
-    Returns
-    -------
-    List[int]
-        The list containing the removed elements.
-    """
-    if len(input_list) <= amount:
-        list_copy = input_list.copy()
-        input_list.clear()
-        return list_copy
-    else:
-        picked = []
-        left_over = input_list
-        for _ in range(amount):
-            random_index = random_state.randint(0, len(input_list))
-            removed_element = left_over.pop(random_index)
-            picked.append(removed_element)
-        return picked
-
-
-def random_sample_from_list(
-    array, random_state, size: int, exclude: Optional[int] = None
-):
-    if exclude is not None:
-        if not isinstance(exclude, list):
-            exclude = [exclude]
-        return random_state.choice(
-            exclude_elements(array=array, exclude=exclude),
-            size=size,
-            replace=False,
-        )
-    else:
-        return random_state.choice(list(array), size=size, replace=False)
-
-
-def exclude_elements(array, exclude):
-    return np.array(list(set(array) - set(exclude)))
-
-
-def get_run_times_saps():
+    # Read the run times of the SAPS solver from the csv file
     running_times_file = os.path.join(
         f"{Path.cwd()}",
-        os.path.join("Data_saps_swgcp_reduced", "cpu_times_inst_param.csv"),
+        os.path.join(
+            os.path.join(os.path.join("Data", "sat"), "Data_saps_swgcp_reduced"),
+            "cpu_times_inst_param.csv",
+        ),
     )
     running_times = []
     with open(running_times_file, newline="") as csvfile:
@@ -155,79 +74,129 @@ def get_run_times_saps():
         next_rt_vector = [float(s) for s in re.findall(r"-?\d+\.?\d*", next_line)][2:]
         running_times.append(next_rt_vector)
     running_times = np.asarray(running_times)
-    lambda_ = 10
-    running_times = np.exp(-lambda_ * running_times)
+    # lambda_ = 10
+    # running_times = np.exp(-lambda_ * running_times)
     return running_times
 
 
-def get_parameterization_saps():
+def get_parameterization_saps() -> np.ndarray:
+    """Extract the features of the parameters of the SAPS solver for the SAT problem.
+
+    Returns
+    -------
+    np.ndarray
+        The features of the parameterizations of the SAPS solver. The shape of this matrix is (num_arms, 4)
+    """
+    # Read the parameterization of the SAPS solver from the .txt file
     parametrizations_file = os.path.join(
         f"{Path.cwd()}",
-        os.path.join("Data_saps_swgcp_reduced", "Random_Parameters_SAPS.txt"),
+        os.path.join(
+            os.path.join(os.path.join("Data", "sat"), "Data_saps_swgcp_reduced"),
+            "Random_Parameters_SAPS.txt",
+        ),
     )
     with open(parametrizations_file, "r") as f:
         lineList = f.readlines()
+
+    # Extract the parameterizations and preprocessing them
     parametrizations = [float(s) for s in re.findall(r"-?\d+\.?\d*", lineList[0])]
     parametrizations = np.reshape(parametrizations, (20, 4))
     parametrizations = preprocessing.normalize(parametrizations)
-
     return parametrizations
 
 
-def get_features_saps():
+def get_features_saps() -> np.ndarray:
+    """Extract the features of the problem instances of the SAT problem.
+
+    Returns
+    -------
+    np.ndarray
+        The preprocessed features of the problem instances of the SAT problem. The shape of this matrix is (time_horizon, 8)
+    """
     # read features
     features_file = os.path.join(
         f"{Path.cwd()}",
-        os.path.join("Data_saps_swgcp_reduced", "Reduced_Features_SWGCP_only_5000.csv"),
+        os.path.join(
+            os.path.join(os.path.join("Data", "sat"), "Data_saps_swgcp_reduced"),
+            "Reduced_Features_SWGCP_only_5000.csv",
+        ),
     )
     features = []
-    # problem_instances = []
     with open(features_file, newline="") as csvfile:
         features_data = list(csv.reader(csvfile))
     for i in range(1, len(features_data)):
         next_line = features_data[i]
-        # problem_instances.append(next_line[0])
         del next_line[0]
         next_feature_vector = [float(s) for s in next_line]
         features.append(next_feature_vector)
     features = np.asarray(features)
+
+    # Preprocess the features by removing the features with low variance and high correlation
     features = preprocess(
         data=features, variance_threshold=0.001, correlation_threshold=0.98
     )
     return features
 
 
-def get_run_times_mips():
+def get_run_times_mips() -> np.ndarray:
+    """Extract the run times of the CPLEX solver.
+
+    Returns
+    -------
+    np.ndarray
+        The run times of all the parameterizations on all the problem instances in the dataset. The shape of this matrix is (time_horizon, num_arms)
+    """
     running_times_file = os.path.join(
         f"{Path.cwd()}",
-        os.path.join("bids_arbitrary_data", "20_Params_times.csv"),
+        os.path.join(
+            os.path.join(os.path.join("Data", "mips"), "bids_arbitrary_data"),
+            "20_Params_times.csv",
+        ),
     )
     running_times = pd.read_csv(running_times_file, delimiter="\t")
     running_times = running_times.iloc[:, 1:].to_numpy(dtype=float)
-    lambda_ = 10
-    running_times = np.exp(-lambda_ * running_times)
+    # lambda_ = 10
+    # running_times = np.exp(-lambda_ * running_times)
     return running_times
 
 
-def get_parameterization_mips():
+def get_parameterization_mips() -> np.ndarray:
+    """Extract the features of the parameters of the CPLEX solver for the MIPS problem.
+
+    Returns
+    -------
+    np.ndarray
+        The features of the parameterizations of the CPLEX solver. The shape of this matrix is (num_arms, 24)
+    """
     parametrizations_file = os.path.join(
         f"{Path.cwd()}",
-        os.path.join("bids_arbitrary_data", "20_params_bids_arb.csv"),
+        os.path.join(
+            os.path.join(os.path.join("Data", "mips"), "bids_arbitrary_data"),
+            "20_params_bids_arb.csv",
+        ),
     )
     params_mips = pd.read_csv(parametrizations_file, delimiter="\t")
-    params = params_mips.to_numpy() 
+    params = params_mips.to_numpy()
     parametrizations = preprocess(
         data=params[:, 1:], variance_threshold=0.15, correlation_threshold=0.95
     )
     return parametrizations
 
 
-def get_features_mips():
+def get_features_mips() -> np.ndarray:
+    """Extract the features of the problem instances of the MIPS problem.
+
+    Returns
+    -------
+    np.ndarray
+        The preprocessed features of the problem instances of the MIPS problem. The shape of this matrix is (time_horizon, 13)
+    """
     # read features
     features_file = os.path.join(
         f"{Path.cwd()}",
         os.path.join(
-            "bids_arbitrary_data", "Features_1500_inst_sort_bids_arbitrary_MIP_CA.csv"
+            os.path.join(os.path.join("Data", "mips"), "bids_arbitrary_data"),
+            "Features_1500_inst_sort_bids_arbitrary_MIP_CA.csv",
         ),
     )
     features = []
@@ -248,8 +217,32 @@ def get_features_mips():
 
 
 def get_context_matrix(
-    parametrizations, features, joint_feature_map_mode, context_feature_dimensions
-):
+    parametrizations: np.ndarray,
+    features: np.ndarray,
+    joint_feature_map_mode: str,
+    context_feature_dimensions: int,
+) -> np.ndarray:
+    """Get the context matrix by using joint feature map mode on the parameterizations and features of the problem instances.
+
+    Each row in the matrix corresponds to the problem instance to be solved.
+    Each context vector is of dimension `context_feature_dimensions` based on the `joint_feature_map_mode`.
+
+    Parameters
+    ----------
+    parametrizations : np.ndarray
+        The parameters of the solver.
+    features : np.ndarray
+        The features of the problem instances.
+    joint_feature_map_mode : str
+        A feature mapping mode.
+    context_feature_dimensions : int
+        Dimensions of the context features to be formed.
+
+    Returns
+    -------
+    np.ndarray
+        An np.ndarray of shape (number of instances, number of arms, context dimension).
+    """
     n_arms = parametrizations.shape[0]
     min_max_scaler = preprocessing.MinMaxScaler()
     context_matrix = []
@@ -269,7 +262,7 @@ def get_context_matrix(
 
 
 def join_feature_map(
-    x: np.ndarray, y: np.ndarray, mode: Optional[str] = "polynimial"
+    x: np.ndarray, y: np.ndarray, mode: Optional[str] = "polynomial"
 ) -> np.ndarray:
     """
     The feature engineering part of the CPPL algorithm.
@@ -280,8 +273,8 @@ def join_feature_map(
         Features of problem instances.
     y : np.ndarray
         Features of parameterization.
-    mode : str
-        Mode of the solver.
+    mode : str, optional
+        Mode of the solver, by default "polynomial"
 
     Returns
     -------
@@ -295,23 +288,6 @@ def join_feature_map(
     elif mode == "polynomial":
         poly = PolynomialFeatures(degree=2, interaction_only=True)
         return poly.fit_transform(np.concatenate((x, y), axis=0).reshape(1, -1))
-
-
-def get_round_winner(
-    running_time, arm_1: Optional[int] = None, arm_2: Optional[int] = None
-):
-    if arm_1 and arm_2 is None:
-        return np.argmax(running_time)
-    elif arm_1 != arm_2:
-        winner = arm_1 if check_runtime(arm_1, arm_2, running_time) else arm_2
-        return winner
-
-
-def check_runtime(arm_i, arm_j, running_time):
-    if running_time[arm_i] < running_time[arm_j]:
-        return False
-    else:
-        return True
 
 
 def gradient(
@@ -344,9 +320,7 @@ def gradient(
     num = np.zeros((len(theta)))
     for arm in selection:
         denominator = denominator + np.exp(np.dot(theta, context_vector[arm]))
-        num = num + (
-            context_vector[arm] * np.exp(np.dot(theta, context_vector[arm]))
-        )
+        num = num + (context_vector[arm] * np.exp(np.dot(theta, context_vector[arm])))
     res = context_vector[winner_arm] - (num / denominator)
     return res.reshape(
         -1,
@@ -377,15 +351,11 @@ def hessian(
     dimension = len(theta)
     t_1 = np.zeros(dimension)
     for arm in selection:
-        t_1 = t_1 + (
-            context_matrix[arm] * np.exp(np.dot(theta, context_matrix[arm]))
-        )
+        t_1 = t_1 + (context_matrix[arm] * np.exp(np.dot(theta, context_matrix[arm])))
     num_1 = np.outer(t_1, t_1)
     denominator_1 = 0
     for arm in selection:
-        denominator_1 = (
-            denominator_1 + np.exp(np.dot(theta, context_matrix[arm])) ** 2
-        )
+        denominator_1 = denominator_1 + np.exp(np.dot(theta, context_matrix[arm])) ** 2
     s_1 = num_1 / denominator_1
     num_2 = 0
     for j in selection:
@@ -400,7 +370,33 @@ def hessian(
     return s_1 - s_2
 
 
-def stochastic_gradient_descent(theta, gamma_t, selection, context_vector, winner):
+def stochastic_gradient_descent(
+    theta: np.ndarray,
+    gamma_t: float,
+    selection: np.ndarray,
+    context_vector: np.ndarray,
+    winner: int,
+) -> np.ndarray:
+    """Calculate and update the weight parameters using stochastic gradient descent.
+
+    Parameters
+    ----------
+    theta : np.ndarray
+        The weight parameters from the previous time step.
+    gamma_t : float
+        The learning rate.
+    selection : np.ndarray
+        The subset of arms selected from the pool of arms.
+    context_vector : np.ndarray
+        The context vector in the current time step.
+    winner : int
+        The winner arm in the selected subset. The winner arm is the one which has the lowest run time to solve the given problem instance.
+
+    Returns
+    -------
+    np.ndarray
+        The updated estimated weight parameters.
+    """
     derivative = gradient(
         theta=theta,
         winner_arm=winner,
@@ -413,7 +409,25 @@ def stochastic_gradient_descent(theta, gamma_t, selection, context_vector, winne
     return theta
 
 
-def preprocess(data, variance_threshold, correlation_threshold):
+def preprocess(
+    data: np.ndarray, variance_threshold: float, correlation_threshold: float
+) -> np.ndarray:
+    """A utility function to preprocess the data.
+
+    Parameters
+    ----------
+    data : np.ndarray
+        The input raw data.
+    variance_threshold : float
+        The variance threshold to drop the data points lower than this threshold.
+    correlation_threshold : float
+        The correlation threshold to drop the data points higher than this threshold.
+
+    Returns
+    -------
+    np.ndarray
+        The processes and clean data.
+    """
     # normalize#########
     min_max_scaler = preprocessing.MinMaxScaler()
     data = min_max_scaler.fit_transform(data)

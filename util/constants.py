@@ -11,7 +11,8 @@ class Solver(Enum):
 
 
 class JointFeatureMode(Enum):
-
+    """Constant class for the joint feature map"""
+    
     POLYNOMIAL = "polynomial"
     CONCATENATION = "concatenation"
     KRONECKER = "kronecker"

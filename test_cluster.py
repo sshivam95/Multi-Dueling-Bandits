@@ -40,6 +40,13 @@ def _main():
         choices=algorithm_names_to_algorithms.keys(),
     )
     parser.add_argument(
+        "--arms",
+        dest="num_arms",
+        default=20,
+        type=int,
+        help="How many arms the generated preference matrices should contain. (default: 20)",
+    )
+    parser.add_argument(
         "--reps",
         dest="reps",
         default=10,
@@ -89,8 +96,10 @@ def _main():
 
     solver = args.solver
     subset_size = args.subset_size
+    num_arms = args.num_arms
     run_experiment(
         algorithms=algorithms,
+        num_arms=num_arms,
         reps=args.reps,
         n_jobs=args.n_jobs,
         joint_featured_map_mode=args.joint_featured_map_mode,
@@ -102,6 +111,7 @@ def _main():
 
 def run_experiment(
     algorithms,
+    num_arms,
     reps,
     n_jobs,
     joint_featured_map_mode,
@@ -138,9 +148,14 @@ def run_experiment(
         joint_feature_map_mode=joint_featured_map_mode,
         context_feature_dimensions=context_dimensions,
     )
+    
+    parametrizations = parametrizations[:num_arms, :]
+    running_time = running_time[:, :num_arms]
+    context_matrix = context_matrix[:, :num_arms, :]
     regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
 
+    print(f"\nN = {num_arms}")
     def job_producer() -> Generator:
         for algorithm_class in algorithms:
             algorithm_name = algorithm_class.__name__
@@ -194,9 +209,9 @@ def run_experiment(
             mask = (result_df["algorithm"] == name) & (result_df["rep_id"] == rep_id)
             regrets[rep_id] = result_df[mask]["regret"]
             execution_times[rep_id] = result_df[mask]["execution_time"].mean()
-        np.save(f"Regret_results_theta0_feedback_correction_50//regret_{name}_{solver}_{subset_size}.npy", regrets)
+        np.save(f"Noctua_2_results/Correct_run_timing/Regret_results_theta_bar_correct_feedback_50_framework_v1/regret_{num_arms}_{name}_{solver}_{subset_size}.npy", regrets)
         np.save(
-            f"Execution_times_results_theta0_feedback_correction_50//execution_time_{name}_{solver}_{subset_size}.npy",
+            f"Noctua_2_results/Correct_run_timing/Execution_results_theta_bar_correct_feedback_50_framework_v1/execution_time_{num_arms}_{name}_{solver}_{subset_size}.npy",
             execution_times,
         )
     print(f"Experiments took {round(runtime)}s.")
