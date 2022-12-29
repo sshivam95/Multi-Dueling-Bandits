@@ -85,7 +85,7 @@ class Algorithm:
         A `PreferenceEstimate` object for entering the samples of the estimates.
     time_step
         The current time step.
-    selection 
+    selection
         The subset selection of size `subset_size` from the arms. Start with random selection.
     winner
         The winner arm in the subset selection.
@@ -178,22 +178,16 @@ class Algorithm:
         else:
             self.context_matrix = context_matrix
         self.logger.debug(f"    -> Context matrix shape: {self.context_matrix.shape}")
-        
+
         # Initialize randomly
-        self.theta_init = self.random_state.rand(
-            self.context_dimensions
-        )
-        
-        # maximum-likelihood estimate of the weight parameter 
-        self.theta_hat = copy.copy(
-            self.theta_init
-        )
+        self.theta_init = self.random_state.rand(self.context_dimensions)
+
+        # maximum-likelihood estimate of the weight parameter
+        self.theta_hat = copy.copy(self.theta_init)
         self.theta_bar = copy.copy(self.theta_hat)
         self.regret = np.zeros(self.time_horizon)
         if not omega:
-            self.omega = (
-                1
-            )
+            self.omega = 1
         self.skill_vector = np.zeros((self.time_horizon, self.num_arms))
         self.confidence = np.zeros((self.time_horizon, self.num_arms))
         self.gamma = 2
@@ -204,16 +198,12 @@ class Algorithm:
         self.time_step = 0
         self.selection = self.random_state.choice(
             self.num_arms, self.subset_size, replace=False
-        ) 
+        )
         self.winner = None
         self.execution_time = 0
 
     def step(self) -> None:
         """Run one step of the algorithm.
-
-        This corresponds to a logical step of the algorithm and may perform
-        multiple comparisons. What exactly a "logical step" is depends on the
-        algorithm.
 
         If you want to run an algorithm you should use the ``run`` function
         instead.
@@ -221,6 +211,10 @@ class Algorithm:
         raise NotImplementedError
 
     def run(self):
+        """Run the algorithm until completion.
+
+        Usually, the completion of all the arm strategy algorithms are determined by solving all the problem instances.
+        """
         print("Running algorithm...")
         start_time = perf_counter()
 
@@ -231,8 +225,21 @@ class Algorithm:
         self.execution_time = end_time - start_time
         print("Algorithm Finished...")
 
-    def get_skill_vector(self, theta, context_vector):
-        # compute estimated contextualized utility parameters
+    def get_skill_vector(self, theta: np.array, context_vector: np.array) -> np.array:
+        """Compute the estimated contextualized utility parameters for each arm in the current time step.
+
+        Parameters
+        ----------
+        theta : np.array
+            The estimated weight parameter.
+        context_vector : np.array
+            The contextual vector at the current time step.
+
+        Returns
+        -------
+        skill_vector: np.array
+            The estimated contextualized utility parameter for each arm based on the PL-model.
+        """
         skill_vector = np.zeros(self.feedback_mechanism.get_num_arms())
         for arm in range(self.feedback_mechanism.get_num_arms()):
             skill_vector[arm] = np.exp(np.inner(theta, context_vector[arm, :]))
@@ -277,29 +284,32 @@ class Algorithm:
     #     return (context_vector_i - context_vector_j).reshape(-1)
 
     def get_confidence_bounds(
-        self, selection, time_step, context_vector, winner: Optional[int] = None
-    ):
-        """_summary_
+        self,
+        selection: np.array,
+        time_step: int,
+        context_vector: np.array,
+        winner: Optional[int] = None,
+    ) -> np.ndarray:
+        """Compute the confidence bounds using the contextual information and the estimated utility weight vector used in some of the algorithms (UCB, Colstim and Colstim_v2).
 
         Parameters
         ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
+        selection : np.array
+            The subset of arms from the pool of arms selected at the current time step.
+        time_step : int
+            The current time step.
+        context_vector : np.array
+            The context vector observed in the current time step.
+        winner : Optional[int], optional
+            The winner arm in the selection of current time step observed by the feedback mechanism, by default None
 
         Returns
         -------
-        _type_
-            _description_
+        np.ndarray
+            A numpy array of shape (1, num_arms) containing the confidence bounds of each arm.
         """
         if time_step > 1:
             if winner is not None:
-                # if winner.shape[0] > 1:
-                #     # If there are multiple winners from a duel, select anyone at random
-                #     winner = self.random_state.choice(winner, size=1, replace=False)
-                # else:
-                #     winner = winner
                 V_hat = self.compute_V_hat(
                     selection=selection,
                     time_step=time_step,
@@ -307,19 +317,22 @@ class Algorithm:
                     winner=winner,
                 )
             else:
+                # If this is the initial time step, the winner is not known, therefore, select the first arm in the selection.
                 V_hat = self.compute_V_hat(
                     selection=selection,
                     time_step=time_step,
                     context_vector=context_vector,
                     winner=selection[0],
                 )
+
+            # Compute the estimates of the SVD components of the covariance matrix sigma from the paper https://arxiv.org/pdf/2002.04275.pdf
             S_hat = self.compute_S_hat(selection, time_step, context_vector)
             sigma_hat = self.compute_sigma_hat(time_step, V_hat, S_hat)
             gram_matrix = self.compute_gram_matrix_theta_bar(context_vector)
             I_hat = self.compute_I_hat(sigma_hat, gram_matrix)
             I_hat_sqrt = np.sqrt(I_hat)
 
-            # compute c_t = confidence bound
+            # compute confidence bound.
             c_t = (
                 self.omega
                 * np.sqrt(
@@ -333,24 +346,28 @@ class Algorithm:
         else:
             return 0
 
-    def compute_V_hat(self, selection, time_step, context_vector, winner):
-        """_summary_
+    def compute_V_hat(
+        self, selection: np.array, time_step: int, context_vector: np.array, winner: int
+    ) -> np.array:
+        """Compute the estimated V component of covariance matrix in SVD.
 
         Parameters
         ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
-        context_vector : _type_
-            _description_
+        selection : np.array
+            The subset of arms from the pool of arms selected at the current time step.
+        time_step : int
+            The current time step.
+        context_vector : np.array
+            The context vector observed in the current time step.
+        winner : int
+            The winner arm in the selection of current time step observed by the feedback mechanism.
 
         Returns
         -------
-        _type_
-            _description_
+        np.array
+            The estimated V component of covariance matrix in SVD.
         """
-        # compute V_hat
+        # compute V_hat using the gradient matrix on the loss function.
         gradient = utility_functions.gradient(
             theta=self.theta_bar,
             winner_arm=winner,
@@ -361,46 +378,50 @@ class Algorithm:
         V_hat = np.asarray((1 / time_step) * self.grad_op_sum).astype("float64")
         return V_hat
 
-    def compute_S_hat(self, selection, time_step, context_vector):
-        """_summary_
+    def compute_S_hat(
+        self, selection: np.array, time_step: int, context_vector: np.array
+    ) -> np.array:
+        """Compute the estimated S component of covariance matrix in SVD.
 
         Parameters
         ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
-        context_vector : _type_
-            _description_
+        selection : np.array
+            The subset of arms from the pool of arms selected at the current time step.
+        time_step : int
+            The current time step.
+        context_vector : np.array
+            The context vector observed in the current time step.
 
         Returns
         -------
-        _type_
-            _description_
+        np.array
+            The estimated S component of covariance matrix in SVD.
         """
-        # compute S_hat
+        # compute S_hat using the hessian matrix of the loss function.
         self.hessian_sum += utility_functions.hessian(
             self.theta_bar, selection, context_vector
         )
         S_hat = np.asarray((1 / time_step) * self.hessian_sum).astype("float64")
         return S_hat
 
-    def compute_sigma_hat(self, time_step, V_hat, S_hat):
-        """_summary_
+    def compute_sigma_hat(
+        self, time_step: int, V_hat: np.array, S_hat: np.array
+    ) -> np.ndarray:
+        """Compute the estimate of the covariance matrix sigma.
 
         Parameters
         ----------
-        time_step : _type_
-            _description_
-        V_hat : _type_
-            _description_
-        S_hat : _type_
-            _description_
+        time_step : int
+            The current time step.
+        V_hat : np.array
+            The estimated V component of covariance matrix in SVD.
+        S_hat : np.ndarray
+            The estimated S component of covariance matrix in SVD.
 
         Returns
         -------
-        _type_
-            _description_
+        np.array
+            The covariance matrix of the SVD.
         """
         # compute sigma_hat
         try:
@@ -411,18 +432,18 @@ class Algorithm:
         sigma_hat = np.nan_to_num(sigma_hat)
         return sigma_hat
 
-    def compute_gram_matrix_theta_bar(self, context_vector):
-        """_summary_
+    def compute_gram_matrix_theta_bar(self, context_vector: np.array) -> np.ndarray:
+        """Compute the gram matrix, Corresponds to `M_t^(i)(theta)` in the paper https://arxiv.org/pdf/2002.04275.pdf
 
         Parameters
         ----------
-        context_vector : _type_
-            _description_
+        context_vector : np.array
+            The context vector observed in the current time step.
 
         Returns
         -------
-        _type_
-            _description_
+        np.ndarray
+            The gram matrix.
         """
         # compute gram_matrix of theta_bar
         gram_matrix = np.zeros(
@@ -434,20 +455,21 @@ class Algorithm:
             ) * np.outer(context_vector[i], context_vector[i])
         return gram_matrix
 
-    def compute_I_hat(self, sigma_hat, gram_matrix):
-        """_summary_
+    def compute_I_hat(
+        self, sigma_hat: np.ndarray, gram_matrix: np.ndarray
+    ) -> np.ndarray:
+        """Calculate the corresponding I_hat_t in the literature.
 
         Parameters
         ----------
-        sigma_hat : _type_
-            _description_
-        gram_matrix : _type_
-            _description_
+        sigma_hat : np.ndarray
+            The estimated covariance matrix of the SVD.
+        gram_matrix : np.ndarray
+            The gram matrix.
 
         Returns
         -------
-        _type_
-            _description_
+        np.ndarray
         """
         # compute I_hat
         sigma_hat_sqrt = np.sqrt(sigma_hat)
@@ -467,41 +489,39 @@ class Algorithm:
         )
         return I_hat
 
-    def get_selection(self, quality_of_arms):
-        """_summary_
+    def get_selection(self, quality_of_arms: np.array) -> np.array:
+        """Get the subset of arms from the pool based on the quality of the arms.
 
         Parameters
         ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
+        quality_of_arms : np.array
+            The quality of each arm. Can be composed of the skill vector along with the confidence bound.
+
+        Returns
+        -------
+        np.array
+            A sorted list of size `subset_size` based on the quality of the arms.
         """
         return (-quality_of_arms).argsort()[0 : self.subset_size]
 
     def update_estimated_theta(
-        self, selection, time_step, winner, gamma_t: Optional[float] = None
-    ):
-        """_summary_
+        self, selection: np.array, time_step: int, winner: int
+    ) -> None:
+        """Update the estimate of the unknown weight parameter of the contexts.
 
         Parameters
         ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
+        selection : np.array
+            The subset of size `subset_size` from the pool of arms selected in the current time step.
+        time_step : int
+            The current time step.
+        winner : int
+            The winner arm in the selected subset.
         """
-        # if winner.shape[0] > 1:
-        #     # If there are multiple winners from a duel, select anyone at random
-        #     winner = self.random_state.choice(winner, size=1, replace=False)
-        # else:
-        #     winner = winner
         context_vector = self.context_matrix[time_step - 1]
+
         # update step size
-        if gamma_t is None:
-            gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
-        else:
-            gamma_t = gamma_t
+        gamma_t = self.gamma * time_step ** ((-1) * self.alpha)
         # update theta_hat with SGD
         self.theta_hat = utility_functions.stochastic_gradient_descent(
             theta=self.theta_hat,
@@ -511,39 +531,39 @@ class Algorithm:
             winner=winner,
         )
 
-    def update_mean_theta(self, time_step):
-        """_summary_
+    def update_mean_theta(self, time_step: int) -> None:
+        """Update the Polyak-Ruppert average SGD weight parameter.
 
         Parameters
         ----------
-        time_step : _type_
-            _description_
+        time_step : int
+            The current time step
         """
         # update theta_bar
         self.theta_bar = (
             time_step - 1
         ) * self.theta_bar / time_step + self.theta_hat / time_step
 
-    def get_regret(self):
-        """_summary_
+    def get_regret(self) -> np.array:
+        """Return the regret computed in all the time steps.
 
         Returns
         -------
-        _type_
-            _description_
+        np.array
+            The regret of shape (time_horizon).
         """
         return self.regret
 
-    def compute_regret(self, selection, time_step):
-        """_summary_
+    def compute_regret(self, selection: np.array, time_step: int) -> None:
+        """Compute the regret on the selected subset of arms at the current time step.
 
         Parameters
         ----------
-        selection : _type_
-            _description_
-        time_step : _type_
-            _description_
+        selection : np.array
+            The subset of arms from the pool of arms selected based on the quality of the arms at the current time step.
+        time_step : int
+            The current time step.
         """
-        self.regret[time_step - 1] = metrics.regret_preselection_saps(
+        self.regret[time_step - 1] = metrics.regret_preselection(
             skill_vector=self.running_time[time_step - 1], selection=selection
         )
