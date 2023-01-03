@@ -2247,3 +2247,6 @@ Plot_images/ThompsonSampling contextual vs UCB correct feedback cumul regret.png
 Plot_images/ThompsonSampling Contextual vs UCB correct feedback log cumul regret.png
 main_local.py
 test.ipynb
+Job_Scripts/run_script_hello_world.sh
+Job_Scripts/run_script_hello_world.sh-2595716.log
+Job_Scripts/run_script_hello_world.sh-2596943.log
