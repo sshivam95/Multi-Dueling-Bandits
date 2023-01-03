@@ -7,7 +7,7 @@ from algorithms.algorithm import Algorithm
 from util.constants import JointFeatureMode, Solver
 
 
-class UCB(Algorithm):
+class UCBExploreExploit(Algorithm):
     def __init__(
         self,
         random_state: Optional[np.random.RandomState] = None,

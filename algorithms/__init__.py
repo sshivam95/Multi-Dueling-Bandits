@@ -1,10 +1,10 @@
 """Various algorithms to solve Preference-Based Multi-Armed Bandit Problems."""
 
 from algorithms.algorithm import Algorithm
-from algorithms.colstim import Colstim, Colstim_v2
+from algorithms.colstim import ColstimContextExploreExploit, ColstimContrastExploreExploit
 from algorithms.self_sparring import IndependentSelfSparring, IndependentSelfSparringContextual
 from algorithms.thompson_sampling import ThompsonSampling, ThompsonSamplingContextual
-from algorithms.upper_confidence_bound import UCB
+from algorithms.upper_confidence_bound import UCBExploreExploit
 
 # Pylint insists that regret_minimizing_algorithms and interfaces are constants and should be
 # named in UPPER_CASE. Technically that is correct, but it doesn't feel quite
@@ -18,9 +18,9 @@ from algorithms.upper_confidence_bound import UCB
 # All algorithms that include some sort of regret-minimizing mode. That
 # includes PAC algorithms with an (optional) exploitation phase.
 regret_minimizing_algorithms = [
-    UCB,
-    Colstim,
-    Colstim_v2,
+    UCBExploreExploit,
+    ColstimContextExploreExploit,
+    ColstimContrastExploreExploit,
     ThompsonSampling,
     ThompsonSamplingContextual,
     IndependentSelfSparring,

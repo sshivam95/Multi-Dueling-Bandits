@@ -9,7 +9,7 @@ from algorithms.algorithm import Algorithm
 from util.constants import JointFeatureMode, Solver
 
 
-class Colstim(Algorithm):
+class ColstimContextExploreExploit(Algorithm):
     def __init__(
         self,
         random_state: Optional[np.random.RandomState] = None,
@@ -25,7 +25,7 @@ class Colstim(Algorithm):
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
-        logger_name="COLSTIM",
+        logger_name="ColstimContextExploreExploit",
         logger_level=logging.INFO,
     ) -> None:
         super().__init__(
@@ -171,7 +171,7 @@ class Colstim(Algorithm):
         return selection
 
 
-class Colstim_v2(Colstim):
+class ColstimContrastExploreExploit(ColstimContextExploreExploit):
     def __init__(
         self,
         random_state: Optional[np.random.RandomState] = None,
@@ -187,7 +187,7 @@ class Colstim_v2(Colstim):
         exploration_length: Optional[int] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
-        logger_name="COLSTIM_v2",
+        logger_name="ColstimContrastExploreExploit",
         logger_level=logging.INFO,
     ) -> None:
         super().__init__(
