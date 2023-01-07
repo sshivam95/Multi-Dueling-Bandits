@@ -8,7 +8,7 @@ from algorithms.algorithm import Algorithm
 from util.constants import JointFeatureMode, Solver
 
 
-class Colstim(Algorithm):
+class ColstimContext(Algorithm):
     """The Colstim class which implements the CoLSTIM algorithm which using Context matrix to select the subset of arms.
     
     This is an arm strategy which is introduced by Bengs et. al. (2022) https://arxiv.org/pdf/2202.04593.pdf for the dueling bandits.
@@ -42,7 +42,7 @@ class Colstim(Algorithm):
         running_time: Optional[np.array] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
-        logger_name="COLSTIM",
+        logger_name="ColstimContext",
         logger_level=logging.INFO,
     ) -> None:
         super().__init__(
@@ -142,7 +142,7 @@ class Colstim(Algorithm):
             )
 
 
-class Colstim_v2(Colstim):
+class ColstimContrast(ColstimContext):
     """The Colstim class which implements the CoLSTIM algorithm which using Contrast matrix to select the subset of arms.
     
     This is an arm strategy which is introduced by Bengs et. al. (2022) https://arxiv.org/pdf/2202.04593.pdf for the dueling bandits.
@@ -169,7 +169,7 @@ class Colstim_v2(Colstim):
         running_time: Optional[np.array] = None,
         threshold_parameter: Optional[float] = None,
         confidence_width: Optional[float] = None,
-        logger_name="COLSTIM_v2",
+        logger_name="ColstimContrast",
         logger_level=logging.INFO,
     ) -> None:
         super().__init__(

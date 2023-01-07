@@ -1,14 +1,14 @@
 """Various arm selection strategy algorithms to solve Pre-bandit Problem in the CPPL framework."""
 
-from algorithms.colstim import Colstim, Colstim_v2
+from algorithms.colstim import ColstimContext, ColstimContrast
 from algorithms.self_sparring import IndependentSelfSparring, IndependentSelfSparringContextual
 from algorithms.thompson_sampling import ThompsonSampling, ThompsonSamplingContextual
 from algorithms.upper_confidence_bound import UCB
 
 regret_minimizing_algorithms = [
     UCB,
-    Colstim,
-    Colstim_v2,
+    ColstimContext,
+    ColstimContrast,
     ThompsonSampling,
     ThompsonSamplingContextual,
     IndependentSelfSparring,
