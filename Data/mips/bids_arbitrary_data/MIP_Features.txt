@@ -1,0 +1,33 @@
+Here are the descriptions for each of the headers in the .csv file:
+
+varis: Number of variables in the mixed integer programming problem.
+cons: Number of constraints in the mixed integer programming problem.
+oc_mean: Mean objective coefficient of the variables in the mixed integer programming problem.
+oc_std: Standard deviation of the objective coefficients of the variables in the mixed integer programming problem.
+oc_min: Minimum objective coefficient of the variables in the mixed integer programming problem.
+oc_max: Maximum objective coefficient of the variables in the mixed integer programming problem.
+nvpc_mean: Mean number of variables per constraint in the mixed integer programming problem.
+nvpc_std: Standard deviation of the number of variables per constraint in the mixed integer programming problem.
+nvpc_min: Minimum number of variables per constraint in the mixed integer programming problem.
+nvpc_max: Maximum number of variables per constraint in the mixed integer programming problem.
+b_nvpc_mean: Mean number of binary variables per constraint in the mixed integer programming problem.
+b_nvpc_std: Standard deviation of the number of binary variables per constraint in the mixed integer programming problem.
+b_nvpc_min: Minimum number of binary variables per constraint in the mixed integer programming problem.
+b_nvpc_max: Maximum number of binary variables per constraint in the mixed integer programming problem.
+vic_mean: Mean number of variables in each constraint in the mixed integer programming problem.
+vic_std: Standard deviation of the number of variables in each constraint in the mixed integer programming problem.
+vic_min: Minimum number of variables in each constraint in the mixed integer programming problem.
+vic_max: Maximum number of variables in each constraint in the mixed integer programming problem.
+lin_nnz: Number of non-zero entries in the linear part of the constraints in the mixed integer programming problem.
+nrows_mean: Mean number of rows in the mixed integer programming problem.
+nrows_std: Standard deviation of the number of rows in the mixed integer programming problem.
+nrows_min: Minimum number of rows in the mixed integer programming problem.
+nrows_max: Maximum number of rows in the mixed integer programming problem.
+naofc_mean: Mean number of additional rows required to eliminate the fixed variables in the mixed integer programming problem.
+naofc_std: Standard deviation of the number of additional rows required to eliminate the fixed variables in the mixed integer programming problem.
+naofc_min: Minimum number of additional rows required to eliminate the fixed variables in the mixed integer programming problem.
+naofc_max: Maximum number of additional rows required to eliminate the fixed variables in the mixed integer programming problem.
+naofc_root_mean: Mean number of additional rows required to eliminate the fixed variables at the root node in the mixed integer programming problem.
+naofc_root_std: Standard deviation of the number of additional rows required to eliminate the fixed variables at the root node in the mixed integer programming problem.
+naofc_root_min: Minimum number of additional rows required to eliminate the fixed variables at the root node in the mixed integer programming problem.
+naofc_root_max: Maximum number of additional rows required to eliminate the fixed variables at the root node in the mixed integer programming problem.
