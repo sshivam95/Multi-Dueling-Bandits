@@ -1,5 +1,5 @@
 declare -a num_arms=("15" "20")
-declare -a algorithm_classes=("Colstim_v2")
+declare -a algorithm_classes=("ColstimContrast")
 declare -a solver_array=("saps")
 declare -a subset_size=("2" "3" "4" "5" "6" "7" "8" "9" "10")
 
@@ -11,7 +11,7 @@ do
     do
       for size in "${subset_size[@]}";
       do
-        sbatch run_script_Colstim_v2_saps.sh $algorithm $solver $size $arms
+        sbatch run_script_Colstim_contrast_saps.sh $algorithm $solver $size $arms
       done
     done
   done
