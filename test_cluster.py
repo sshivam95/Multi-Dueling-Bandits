@@ -49,9 +49,9 @@ def _main():
     parser.add_argument(
         "--reps",
         dest="reps",
-        default=10,
+        default=50,
         type=int,
-        help="How often to run each algorithm. Results will be averaged. (default: 10)",
+        help="How often to run each algorithm. Results will be averaged. (default: 50)",
     )
     parser.add_argument(
         "--subset-size",
@@ -155,6 +155,7 @@ def run_experiment(
     regrets = np.empty(reps, dtype=np.ndarray)
     execution_times = np.zeros(reps)
 
+    print(f"\nN = {num_arms}")
     def job_producer() -> Generator:
         for algorithm_class in algorithms:
             algorithm_name = algorithm_class.__name__
@@ -179,7 +180,7 @@ def run_experiment(
                     parameters,
                     rep_id,
                 )
-    print(f"N = {num_arms}")
+
     @contextlib.contextmanager
     def tqdm_joblib(tqdm_object):
         """Context manager to patch joblib to report into tqdm progress bar given as argument"""
@@ -208,9 +209,9 @@ def run_experiment(
             mask = (result_df["algorithm"] == name) & (result_df["rep_id"] == rep_id)
             regrets[rep_id] = result_df[mask]["regret"]
             execution_times[rep_id] = result_df[mask]["execution_time"].mean()
-        np.save(f"Noctua_2_results/Framework_v2/Regret/regret_{num_arms}_{name}_{solver}_{subset_size}.npy", regrets)
+        np.save(f"Noctua_2_Results/Framework_v2/Regret/regret_{num_arms}_{name}_{solver}_{subset_size}.npy", regrets)
         np.save(
-            f"Noctua_2_results/Framework_v2/Execution_times/execution_time_{num_arms}_{name}_{solver}_{subset_size}.npy",
+            f"Noctua_2_Results/Framework_v2/Execution_Time/execution_time_{num_arms}_{name}_{solver}_{subset_size}.npy",
             execution_times,
         )
     print(f"Experiments took {round(runtime)}s.")
