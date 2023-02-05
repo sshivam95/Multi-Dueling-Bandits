@@ -25,6 +25,16 @@ class PreferenceEstimate:
         self.samples = np.zeros(num_arms)
 
     def enter_sample(self, winner_arm: Union[int, np.array]) -> None:
+        """Enter the sample stats after a selection of subset
+
+        Parameters
+        ----------
+        winner_arm : Union[int, np.array]
+            The winner arm in the subset.
+        """
+        # Update the wins of the winner arm in the subste.
+        # For ThompsonSampling class, this also works as the updation rule.
+        # The reward for the winning arm is considered as 1 and the reward for the rest is considered as 0.
         self.wins[winner_arm] += 1
         for arm in range(self.num_arms):
             if arm != winner_arm:
